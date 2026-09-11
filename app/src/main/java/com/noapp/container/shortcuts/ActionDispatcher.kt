@@ -16,7 +16,7 @@ object ActionDispatcher {
             val intent = when (slot.type) {
                 SlotType.APP -> appIntent(context, slot.param, sharedText)
                 SlotType.URL -> Intent(Intent.ACTION_VIEW, Uri.parse(resolveTemplate(slot.param, sharedText)))
-                SlotType.INTENT, SlotType.CUSTOM ->
+                SlotType.INTENT ->
                     Intent.parseUri(resolveTemplate(slot.param, sharedText), Intent.URI_INTENT_SCHEME)
                 null -> return
             }

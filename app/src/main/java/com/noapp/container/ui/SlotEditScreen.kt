@@ -1,5 +1,6 @@
 package com.noapp.container.ui
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -74,6 +75,10 @@ fun SlotEditScreen(mode: AppMode, slot: ShortcutSlot, onSave: (ShortcutSlot) -> 
     // Landing here fresh on an unconfigured App slot — skip the extra "Choose app" tap and
     // open the picker immediately.
     var showAppPicker by remember { mutableStateOf(type == SlotType.APP && param.isBlank()) }
+    // Two-step "build an Intent by picking an Activity" flow: pick the target app first,
+    // then one of its exported activities — avoids hand-typing an intent:// URI.
+    var showActivityAppPicker by remember { mutableStateOf(false) }
+    var activityPickerPackage by remember { mutableStateOf<String?>(null) }
 
     val title = if (mode != AppMode.LIST && slot.id == 0) {
         stringResource(R.string.slot_edit_title_main)
@@ -131,14 +136,20 @@ fun SlotEditScreen(mode: AppMode, slot: ShortcutSlot, onSave: (ShortcutSlot) -> 
                         }
                     }
                 }
-                SlotType.INTENT, SlotType.CUSTOM -> OutlinedTextField(
-                    value = param,
-                    onValueChange = { param = it },
-                    label = { Text(stringResource(R.string.slot_edit_intent_label)) },
-                    placeholder = { Text(stringResource(R.string.slot_edit_intent_placeholder)) },
-                    supportingText = { Text(sharedTextHint) },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                SlotType.INTENT -> Column {
+                    OutlinedTextField(
+                        value = param,
+                        onValueChange = { param = it },
+                        label = { Text(stringResource(R.string.slot_edit_intent_label)) },
+                        placeholder = { Text(stringResource(R.string.slot_edit_intent_placeholder)) },
+                        supportingText = { Text(sharedTextHint) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedButton(
+                        onClick = { showActivityAppPicker = true },
+                        modifier = Modifier.padding(top = 8.dp)
+                    ) { Text(stringResource(R.string.slot_edit_choose_activity)) }
+                }
                 null -> {}
             }
 
@@ -213,6 +224,29 @@ fun SlotEditScreen(mode: AppMode, slot: ShortcutSlot, onSave: (ShortcutSlot) -> 
                 param = pkg
                 if (label.isBlank()) label = appLabel
                 showAppPicker = false
+            }
+        )
+    }
+
+    if (showActivityAppPicker) {
+        AppPickerDialog(
+            multiSelect = false,
+            onDismiss = { showActivityAppPicker = false },
+            onConfirm = { picks ->
+                activityPickerPackage = picks.first().first
+                showActivityAppPicker = false
+            }
+        )
+    }
+
+    activityPickerPackage?.let { pkg ->
+        ActivityPickerDialog(
+            packageName = pkg,
+            onDismiss = { activityPickerPackage = null },
+            onPick = { className, activityLabel ->
+                param = Intent().setClassName(pkg, className).toUri(Intent.URI_INTENT_SCHEME)
+                if (label.isBlank()) label = activityLabel
+                activityPickerPackage = null
             }
         )
     }

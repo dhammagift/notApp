@@ -62,7 +62,9 @@ object ConfigStore {
         val slots = (0 until arr.length()).map { i ->
             val obj = arr.getJSONObject(i)
             val type = if (obj.isNull("type")) null else {
-                runCatching { SlotType.valueOf(obj.getString("type")) }.getOrNull()
+                // "CUSTOM" was merged into INTENT (identical behavior) — keep old configs working.
+                val typeName = obj.getString("type").let { if (it == "CUSTOM") "INTENT" else it }
+                runCatching { SlotType.valueOf(typeName) }.getOrNull()
             }
             ShortcutSlot(
                 id = i,

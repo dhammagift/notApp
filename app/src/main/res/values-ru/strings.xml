@@ -89,7 +89,6 @@
     <string name="slot_type_app">Приложение</string>
     <string name="slot_type_url">URL</string>
     <string name="slot_type_intent">Intent</string>
-    <string name="slot_type_custom">Другое</string>
     <string name="config_position_main">Главный · тап по иконке</string>
     <string name="config_not_configured">Не настроено</string>
     <string name="config_delete_desc">Удалить</string>
@@ -109,12 +108,17 @@
     <string name="slot_edit_shared_text_hint">Используйте {{word}}, чтобы вставить текст, отправленный в Not App</string>
     <string name="slot_edit_intent_label">Intent URI</string>
     <string name="slot_edit_intent_placeholder">intent://...#Intent;...end</string>
+    <string name="slot_edit_choose_activity">Выбрать активность…</string>
     <string name="slot_edit_label_field">Название</string>
     <string name="slot_edit_icon_field">Иконка (эмодзи, необязательно)</string>
     <string name="slot_edit_icon_hint_app">Оставьте пустым, чтобы использовать иконку самого приложения</string>
     <string name="slot_edit_icon_hint_other">Оставьте пустым для автоматического значка с буквой</string>
     <string name="slot_edit_icon_random">Случайно</string>
     <string name="slot_edit_color_label">Цвет</string>
+
+    <!-- Диалог выбора активности -->
+    <string name="activity_picker_title">Выбор активности</string>
+    <string name="activity_picker_empty">Экспортируемые активности не найдены</string>
 
     <!-- Диалог выбора приложения -->
     <string name="app_picker_title_fill">Заполнить слоты приложениями</string>

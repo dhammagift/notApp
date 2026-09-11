@@ -1,6 +1,6 @@
 package com.noapp.container.model
 
-enum class SlotType { APP, URL, INTENT, CUSTOM }
+enum class SlotType { APP, URL, INTENT }
 
 /**
  * One entry in a variable-length, user-ordered list (see [AppConfig]). [id] is
@@ -8,7 +8,7 @@ enum class SlotType { APP, URL, INTENT, CUSTOM }
  * not a stable identity. In AppMode.DIRECT, id 0 is special ("Main": fires on
  * a plain tap); in AppMode.LIST every entry is just a row in the shown list.
  * [param] holds the type-specific payload: package name (APP), URL (URL),
- * or an intent URI string parsed via Intent.parseUri (INTENT, CUSTOM).
+ * or an intent URI string parsed via Intent.parseUri (INTENT).
  * [customIcon], if set, overrides the icon entirely (an emoji or short text,
  * drawn on a [color] badge) — otherwise APP slots show the target app's own
  * launcher icon and everything else falls back to a monogram of [label].

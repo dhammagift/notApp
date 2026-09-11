@@ -86,7 +86,6 @@ import androidx.compose.ui.zIndex
 import com.noapp.container.R
 import com.noapp.container.icon.AndroidIcon
 import com.noapp.container.icon.BoltIcon
-import com.noapp.container.icon.ExtensionIcon
 import com.noapp.container.icon.LinkIcon
 import com.noapp.container.icon.SlotIcon
 import com.noapp.container.icon.displayName
@@ -100,7 +99,6 @@ private fun SlotType.icon(): ImageVector = when (this) {
     SlotType.APP -> AndroidIcon
     SlotType.URL -> LinkIcon
     SlotType.INTENT -> BoltIcon
-    SlotType.CUSTOM -> ExtensionIcon
 }
 
 private fun AppMode.labelRes(): Int = when (this) {

@@ -92,7 +92,6 @@
     <string name="slot_type_app">App</string>
     <string name="slot_type_url">URL</string>
     <string name="slot_type_intent">Intent</string>
-    <string name="slot_type_custom">Custom</string>
     <string name="config_position_main">Main · tap icon</string>
     <string name="config_not_configured">Not configured</string>
     <string name="config_delete_desc">Delete</string>
@@ -112,12 +111,17 @@
     <string name="slot_edit_shared_text_hint">Use {{word}} to insert text shared into Not App</string>
     <string name="slot_edit_intent_label">Intent URI</string>
     <string name="slot_edit_intent_placeholder">intent://...#Intent;...end</string>
+    <string name="slot_edit_choose_activity">Choose activity…</string>
     <string name="slot_edit_label_field">Label</string>
     <string name="slot_edit_icon_field">Icon (emoji, optional)</string>
     <string name="slot_edit_icon_hint_app">Leave blank to use the app\'s own icon</string>
     <string name="slot_edit_icon_hint_other">Leave blank for an auto-generated letter badge</string>
     <string name="slot_edit_icon_random">Random</string>
     <string name="slot_edit_color_label">Color</string>
+
+    <!-- Activity picker dialog -->
+    <string name="activity_picker_title">Choose activity</string>
+    <string name="activity_picker_empty">No exported activities found</string>
 
     <!-- App picker dialog -->
     <string name="app_picker_title_fill">Fill slots from apps</string>

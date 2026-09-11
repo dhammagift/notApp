@@ -15,13 +15,12 @@ fun SlotType.displayName(): String = when (this) {
     SlotType.APP -> stringResource(R.string.slot_type_app)
     SlotType.URL -> stringResource(R.string.slot_type_url)
     SlotType.INTENT -> stringResource(R.string.slot_type_intent)
-    SlotType.CUSTOM -> stringResource(R.string.slot_type_custom)
 }
 
 /**
- * Path data for exactly the 4 glyphs the slot-type picker needs, lifted from Google's
+ * Path data for exactly the 3 glyphs the slot-type picker needs, lifted from Google's
  * material-design-icons set (same paths androidx's generated Icons.Filled.* use).
- * Avoids pulling in material-icons-extended (2000+ icons, tens of MB unminified) for four.
+ * Avoids pulling in material-icons-extended (2000+ icons, tens of MB unminified) for three.
  */
 private fun vector(name: String, path: String): ImageVector =
     ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f)
@@ -55,11 +54,3 @@ val BoltIcon: ImageVector by lazy {
     )
 }
 
-val ExtensionIcon: ImageVector by lazy {
-    vector(
-        "Extension",
-        "M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5a2.5 2.5 0 0 0-5 0V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 " +
-            "0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7c1.49 " +
-            "0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5a2.5 2.5 0 0 0 0-5z"
-    )
-}
