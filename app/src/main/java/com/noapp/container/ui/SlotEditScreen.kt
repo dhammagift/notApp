@@ -72,6 +72,13 @@ fun SlotEditScreen(mode: AppMode, slot: ShortcutSlot, onSave: (ShortcutSlot) -> 
     // below instead of landing on the type-selector chips first.
     var type by remember { mutableStateOf(slot.type ?: SlotType.APP) }
     var label by remember { mutableStateOf(slot.label) }
+    // Tracks the last value we auto-filled label with, so re-picking a different app/activity/
+    // preset updates it too — but only while the user hasn't typed their own label over it.
+    var lastAutoLabel by remember { mutableStateOf<String?>(null) }
+    fun applyAutoLabel(value: String) {
+        if (label.isBlank() || label == lastAutoLabel) label = value
+        lastAutoLabel = value
+    }
     var color by remember { mutableStateOf(slot.color) }
     var param by remember { mutableStateOf(slot.param) }
     var customIcon by remember { mutableStateOf(slot.customIcon) }
@@ -136,7 +143,7 @@ fun SlotEditScreen(mode: AppMode, slot: ShortcutSlot, onSave: (ShortcutSlot) -> 
                             AssistChip(
                                 onClick = {
                                     param = template
-                                    if (label.isBlank()) label = name
+                                    applyAutoLabel(name)
                                 },
                                 label = { Text(name) }
                             )
@@ -229,7 +236,7 @@ fun SlotEditScreen(mode: AppMode, slot: ShortcutSlot, onSave: (ShortcutSlot) -> 
             onConfirm = { picks ->
                 val (pkg, appLabel) = picks.first()
                 param = pkg
-                if (label.isBlank()) label = appLabel
+                applyAutoLabel(appLabel)
                 showAppPicker = false
             }
         )
@@ -254,7 +261,7 @@ fun SlotEditScreen(mode: AppMode, slot: ShortcutSlot, onSave: (ShortcutSlot) -> 
             onDismiss = { activityPickerPackage = null },
             onPick = { className ->
                 param = Intent().setClassName(pkg, className).toUri(Intent.URI_INTENT_SCHEME)
-                if (label.isBlank()) label = activityPickerAppLabel
+                applyAutoLabel(activityPickerAppLabel)
                 activityPickerPackage = null
             }
         )
