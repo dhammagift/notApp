@@ -24,8 +24,10 @@ data class ShortcutSlot(
     val isConfigured: Boolean get() = type != null && param.isNotBlank()
 
     companion object {
-        const val DEFAULT_COLOR = "#5F6368"
-        val PALETTE = listOf("#5F6368", "#1A73E8", "#188038", "#D93025", "#F9AB00", "#8E24AA")
+        const val DEFAULT_COLOR = "#4A6FA5"
+        // Muted, "designed" tones instead of raw web RGB — requested order:
+        // blue, red, yellow, white, orange, gray, lilac.
+        val PALETTE = listOf("#4A6FA5", "#C0574C", "#D9A441", "#F1EFE9", "#C97A3D", "#8B8D91", "#9A7FB8")
         fun emptySlots(): List<ShortcutSlot> = (0..4).map { ShortcutSlot(id = it) }
     }
 }

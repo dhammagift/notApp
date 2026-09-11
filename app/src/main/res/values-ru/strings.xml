@@ -113,6 +113,7 @@
     <string name="slot_edit_icon_field">Иконка (эмодзи, необязательно)</string>
     <string name="slot_edit_icon_hint_app">Оставьте пустым, чтобы использовать иконку самого приложения</string>
     <string name="slot_edit_icon_hint_other">Оставьте пустым для автоматического значка с буквой</string>
+    <string name="slot_edit_icon_random">Случайно</string>
     <string name="slot_edit_color_label">Цвет</string>
 
     <!-- Диалог выбора приложения -->

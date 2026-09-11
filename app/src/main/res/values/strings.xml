@@ -116,6 +116,7 @@
     <string name="slot_edit_icon_field">Icon (emoji, optional)</string>
     <string name="slot_edit_icon_hint_app">Leave blank to use the app\'s own icon</string>
     <string name="slot_edit_icon_hint_other">Leave blank for an auto-generated letter badge</string>
+    <string name="slot_edit_icon_random">Random</string>
     <string name="slot_edit_color_label">Color</string>
 
     <!-- App picker dialog -->

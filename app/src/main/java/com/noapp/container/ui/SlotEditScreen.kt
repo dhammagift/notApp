@@ -1,6 +1,7 @@
 package com.noapp.container.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -45,6 +47,11 @@ import com.noapp.container.icon.displayName
 import com.noapp.container.model.AppMode
 import com.noapp.container.model.ShortcutSlot
 import com.noapp.container.model.SlotType
+
+private val ICON_EMOJI_CHOICES = listOf(
+    "🚀", "⭐", "🔥", "💡", "🎯", "📌", "🎵", "📷", "🎮", "📚",
+    "💬", "🗺️", "⚡", "🎨", "🛠️", "🔒", "🌙", "☀️", "🍀", "❤️"
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -124,22 +131,28 @@ fun SlotEditScreen(mode: AppMode, slot: ShortcutSlot, onSave: (ShortcutSlot) -> 
             )
 
             Spacer(Modifier.height(16.dp))
-            OutlinedTextField(
-                value = customIcon,
-                onValueChange = { customIcon = it },
-                label = { Text(stringResource(R.string.slot_edit_icon_field)) },
-                placeholder = { Text("🚀") },
-                supportingText = {
-                    Text(
-                        stringResource(
-                            if (type == SlotType.APP) R.string.slot_edit_icon_hint_app
-                            else R.string.slot_edit_icon_hint_other
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = customIcon,
+                    onValueChange = { customIcon = it },
+                    label = { Text(stringResource(R.string.slot_edit_icon_field)) },
+                    placeholder = { Text("🚀") },
+                    supportingText = {
+                        Text(
+                            stringResource(
+                                if (type == SlotType.APP) R.string.slot_edit_icon_hint_app
+                                else R.string.slot_edit_icon_hint_other
+                            )
                         )
-                    )
-                },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+                    },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(Modifier.width(8.dp))
+                OutlinedButton(onClick = { customIcon = ICON_EMOJI_CHOICES.random() }) {
+                    Text(stringResource(R.string.slot_edit_icon_random))
+                }
+            }
 
             Spacer(Modifier.height(16.dp))
             Text(stringResource(R.string.slot_edit_color_label), style = MaterialTheme.typography.labelLarge)
@@ -151,6 +164,7 @@ fun SlotEditScreen(mode: AppMode, slot: ShortcutSlot, onSave: (ShortcutSlot) -> 
                             .size(if (selected) 36.dp else 32.dp)
                             .clip(CircleShape)
                             .background(Color(android.graphics.Color.parseColor(hex)))
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
                             .clickable { color = hex }
                     )
                 }
