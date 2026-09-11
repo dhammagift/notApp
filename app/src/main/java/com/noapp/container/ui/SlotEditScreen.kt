@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -47,6 +48,12 @@ import com.noapp.container.icon.displayName
 import com.noapp.container.model.AppMode
 import com.noapp.container.model.ShortcutSlot
 import com.noapp.container.model.SlotType
+
+// {{word}} is substituted with shared text by ActionDispatcher.substitute() at launch time.
+private val URL_PRESETS = listOf(
+    "WhatsApp" to "https://wa.me/{{word}}",
+    "Telegram" to "https://t.me/{{word}}"
+)
 
 private val ICON_EMOJI_CHOICES = listOf(
     "🚀", "⭐", "🔥", "💡", "🎯", "📌", "🎵", "📷", "🎮", "📚",
@@ -103,14 +110,27 @@ fun SlotEditScreen(mode: AppMode, slot: ShortcutSlot, onSave: (ShortcutSlot) -> 
                 SlotType.APP -> OutlinedButton(onClick = { showAppPicker = true }) {
                     Text(param.ifBlank { stringResource(R.string.slot_edit_choose_app) })
                 }
-                SlotType.URL -> OutlinedTextField(
-                    value = param,
-                    onValueChange = { param = it },
-                    label = { Text(stringResource(R.string.slot_edit_url_label)) },
-                    placeholder = { Text(stringResource(R.string.slot_edit_url_placeholder)) },
-                    supportingText = { Text(sharedTextHint) },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                SlotType.URL -> Column {
+                    OutlinedTextField(
+                        value = param,
+                        onValueChange = { param = it },
+                        label = { Text(stringResource(R.string.slot_edit_url_label)) },
+                        placeholder = { Text(stringResource(R.string.slot_edit_url_placeholder)) },
+                        supportingText = { Text(sharedTextHint) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        URL_PRESETS.forEach { (name, template) ->
+                            AssistChip(
+                                onClick = {
+                                    param = template
+                                    if (label.isBlank()) label = name
+                                },
+                                label = { Text(name) }
+                            )
+                        }
+                    }
+                }
                 SlotType.INTENT, SlotType.CUSTOM -> OutlinedTextField(
                     value = param,
                     onValueChange = { param = it },
