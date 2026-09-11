@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,7 +54,9 @@ import com.noapp.container.model.SlotType
 // {{word}} is substituted with shared text by ActionDispatcher.substitute() at launch time.
 private val URL_PRESETS = listOf(
     "WhatsApp" to "https://wa.me/{{word}}",
-    "Telegram" to "https://t.me/{{word}}"
+    "Telegram" to "https://t.me/{{word}}",
+    "YouTube" to "https://youtube.com/results?search_query={{word}}",
+    "Translate" to "https://translate.google.com/?text={{word}}"
 )
 
 private val ICON_EMOJI_CHOICES = listOf(
@@ -79,6 +82,7 @@ fun SlotEditScreen(mode: AppMode, slot: ShortcutSlot, onSave: (ShortcutSlot) -> 
     // then one of its exported activities — avoids hand-typing an intent:// URI.
     var showActivityAppPicker by remember { mutableStateOf(false) }
     var activityPickerPackage by remember { mutableStateOf<String?>(null) }
+    var activityPickerAppLabel by remember { mutableStateOf("") }
 
     val title = if (mode != AppMode.LIST && slot.id == 0) {
         stringResource(R.string.slot_edit_title_main)
@@ -124,7 +128,10 @@ fun SlotEditScreen(mode: AppMode, slot: ShortcutSlot, onSave: (ShortcutSlot) -> 
                         supportingText = { Text(sharedTextHint) },
                         modifier = Modifier.fillMaxWidth()
                     )
-                    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        Modifier.padding(top = 8.dp).horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         URL_PRESETS.forEach { (name, template) ->
                             AssistChip(
                                 onClick = {
@@ -233,7 +240,9 @@ fun SlotEditScreen(mode: AppMode, slot: ShortcutSlot, onSave: (ShortcutSlot) -> 
             multiSelect = false,
             onDismiss = { showActivityAppPicker = false },
             onConfirm = { picks ->
-                activityPickerPackage = picks.first().first
+                val (pkg, appLabel) = picks.first()
+                activityPickerPackage = pkg
+                activityPickerAppLabel = appLabel
                 showActivityAppPicker = false
             }
         )
@@ -243,9 +252,9 @@ fun SlotEditScreen(mode: AppMode, slot: ShortcutSlot, onSave: (ShortcutSlot) -> 
         ActivityPickerDialog(
             packageName = pkg,
             onDismiss = { activityPickerPackage = null },
-            onPick = { className, activityLabel ->
+            onPick = { className ->
                 param = Intent().setClassName(pkg, className).toUri(Intent.URI_INTENT_SCHEME)
-                if (label.isBlank()) label = activityLabel
+                if (label.isBlank()) label = activityPickerAppLabel
                 activityPickerPackage = null
             }
         )

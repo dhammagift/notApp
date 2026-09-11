@@ -28,7 +28,7 @@ private data class ActivityChoice(val className: String, val label: String)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ActivityPickerDialog(packageName: String, onDismiss: () -> Unit, onPick: (className: String, label: String) -> Unit) {
+fun ActivityPickerDialog(packageName: String, onDismiss: () -> Unit, onPick: (className: String) -> Unit) {
     val context = LocalContext.current
     val activities = remember(packageName) {
         val pm = context.packageManager
@@ -52,7 +52,7 @@ fun ActivityPickerDialog(packageName: String, onDismiss: () -> Unit, onPick: (cl
                         ListItem(
                             headlineContent = { Text(activity.label) },
                             supportingContent = { Text(activity.className, style = MaterialTheme.typography.bodySmall) },
-                            modifier = Modifier.clickable { onPick(activity.className, activity.label) }
+                            modifier = Modifier.clickable { onPick(activity.className) }
                         )
                     }
                 }
