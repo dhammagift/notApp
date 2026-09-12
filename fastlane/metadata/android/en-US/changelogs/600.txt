@@ -1,0 +1,7 @@
+* Slot icon field now has a "Random" button that fills in an emoji, not just previews one
+* Restyled color palette (blue, red, yellow, white, orange, gray, lilac) instead of raw web colors
+* Quick-fill presets for the URL type: WhatsApp, Telegram, YouTube search, Google Translate
+* "Custom" and "Intent" slot types were identical, so they've been merged into one "Intent" type
+* New "Choose activity…" picker for Intent slots: pick an app, then one of its screens, and the
+  intent is built for you instead of typing an intent://...#Intent;...end string by hand
+* Fixed the slot's auto-filled label getting stuck on the first app/activity/preset you picked
