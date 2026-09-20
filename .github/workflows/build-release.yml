@@ -18,6 +18,11 @@ on:
         description: 'Release version (optional, e.g., v1.0.2). Leave empty for just a build artifact.'
         required: false
         type: string
+      play:
+        description: 'Also upload to the Play internal track (gift.dhamma.noapp) — testers only, production still needs a promote. Bump the version first: versionCode is derived from it, and Play refuses a code it has already seen.'
+        required: false
+        type: boolean
+        default: false
 
 # A newer push to the same branch supersedes a build still running for it; tags are unique
 # refs, so releases are never cancelled by this.
@@ -119,3 +124,50 @@ jobs:
           prerelease: false
           generate_release_notes: true
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Dormant until the secret exists: no service account, no upload, and the job summary says
+      # so — a green tick that uploaded nothing is the worst thing a release pipeline can do.
+      # The same service account as dg-app-full; it already holds rights on this app. Secrets are
+      # per-repository, so either an organisation secret shared with this repo, or the same JSON
+      # pasted here. Setup: dg-app-full/docs/ANDROID_RELEASE.md.
+      - name: Is the Play service account there?
+        id: play
+        if: github.event_name == 'workflow_dispatch' && inputs.play
+        env:
+          PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -n "$PLAY_JSON" ]; then
+            echo "have=yes" >> "$GITHUB_OUTPUT"
+            echo "service account present"
+          else
+            echo "have=no" >> "$GITHUB_OUTPUT"
+            echo "::notice::PLAY_SERVICE_ACCOUNT_JSON is not set - nothing was uploaded to Play."
+            {
+              echo "### Play upload: nothing happened"
+              echo ""
+              echo "Missing secret \`PLAY_SERVICE_ACCOUNT_JSON\` (organisation secret, or per-repository)."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # The signed bundle from this same run, not a rebuild: what reaches Play is what the release
+      # assets above carry. Deliberately not on a tag — a `v*` tag here has always meant "cut a
+      # GitHub release", and giving an existing tag a second, store-facing meaning quietly is how
+      # someone ships something they did not mean to. Tick the box.
+      - name: Upload to Google Play
+        if: steps.play.outputs.have == 'yes'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: gift.dhamma.noapp
+          releaseFiles: NotApp.aab
+          track: internal
+          status: completed
+
+      - name: Say what went to Play
+        if: success() && steps.play.outputs.have == 'yes'
+        run: |
+          {
+            echo "### Uploaded to Play"
+            echo ""
+            echo "\`gift.dhamma.noapp\` is on the **internal** track. Production needs a promote in the Play Console."
+          } >> "$GITHUB_STEP_SUMMARY"
