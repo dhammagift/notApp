@@ -1,15 +1,18 @@
 name: Build and Release
 
-# Three ways in, two outcomes:
-#   - push to any branch            -> build + signed APK/AAB as a downloadable workflow
+# Two ways in, two outcomes:
+#   - "Run workflow" w/o a version  -> build + signed APK/AAB as a downloadable workflow
 #                                      artifact (run's Summary page). No tag, no Release.
-#   - "Run workflow" w/o a version  -> same as above, for any ref you pick.
 #   - push a vX.Y.Z tag, or
 #     "Run workflow" with a version -> the real thing: a GitHub Release with the files attached.
 on:
+  # A tag builds. Run workflow builds. A push does not.
+  #
+  # A push to ANY branch used to build — every work-in-progress commit on
+  # every branch. Work in progress does not need a build; it needs one when
+  # someone asks, and that is what Run workflow is (owner, 2026-09-20: "не любой же пуш" — and,
+  # on a README fix, "зачем сборка"). Same change as dg-app-full's build-app.yml.
   push:
-    branches:
-      - '**'
     tags:
       - 'v*'
   workflow_dispatch:
