@@ -49,11 +49,16 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
+      # `packages:`, not api-level/build-tools-version: setup-android v3 dropped those inputs
+      # ("Unexpected input(s) 'api-level', 'build-tools-version'") and its default package list
+      # still asks for the legacy "tools" package, which Google has removed from the SDK
+      # repository — so the step died on `Failed to find package 'tools'` before a line of this
+      # project was compiled. Naming the packages skips the default list entirely. Same fix
+      # dg-app-full's workflow already carries, and for the same reason.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          api-level: 36
-          build-tools-version: 36.0.0
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
