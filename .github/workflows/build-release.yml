@@ -127,9 +127,10 @@ jobs:
 
       # Dormant until the secret exists: no service account, no upload, and the job summary says
       # so — a green tick that uploaded nothing is the worst thing a release pipeline can do.
-      # The same service account as dg-app-full; it already holds rights on this app. Secrets are
-      # per-repository, so either an organisation secret shared with this repo, or the same JSON
-      # pasted here. Setup: dg-app-full/docs/ANDROID_RELEASE.md.
+      # The same service account as dg-app-full; it already holds rights on this app. The owner's
+      # account is a USER, not an organisation, so there is no shared-secret option to reach for:
+      # the same JSON goes into this repository's own secrets, under this exact name. Setup:
+      # dg-app-full/docs/ANDROID_RELEASE.md.
       - name: Is the Play service account there?
         id: play
         if: github.event_name == 'workflow_dispatch' && inputs.play
@@ -145,7 +146,7 @@ jobs:
             {
               echo "### Play upload: nothing happened"
               echo ""
-              echo "Missing secret \`PLAY_SERVICE_ACCOUNT_JSON\` (organisation secret, or per-repository)."
+              echo "Missing repository secret \`PLAY_SERVICE_ACCOUNT_JSON\` - Settings -> Secrets and variables -> Actions."
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
