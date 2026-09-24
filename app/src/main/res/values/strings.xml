@@ -82,6 +82,9 @@
     <string name="config_mode_list">☰ List</string>
     <string name="config_mode_direct">▶ Direct</string>
     <string name="config_mode_mix">◫ Mix</string>
+    <!-- The picker spells Mix out as the sum of the other two modes, so the paragraph under it
+         only adds detail. The toolbar button keeps the short config_mode_mix. -->
+    <string name="config_mode_mix_choice">◫ Mix = List + Direct</string>
     <string name="config_mode_dialog_title">Choose mode</string>
     <string name="config_mode_list_desc">I open the shortcut list. Long-press my icon and I\'ll show you the first 4 items as shortcuts right away.</string>
     <string name="config_mode_direct_desc">I launch your first item right away. Long-press my icon and I\'ll show the next 3 items plus Configure — or all 4 with no Configure if you turn on \"Use all shortcut slots\" in Settings.</string>

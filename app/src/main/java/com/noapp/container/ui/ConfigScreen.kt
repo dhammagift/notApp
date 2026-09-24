@@ -111,6 +111,17 @@ private fun AppMode.labelRes(): Int = when (this) {
     AppMode.MIX -> R.string.config_mode_mix
 }
 
+/**
+ * The picker's own title, distinct from [labelRes] (which is what the button in the toolbar shows):
+ * Mix is deliberately spelled out as "List + Direct", because that is exactly what it is — the two
+ * other modes combined — and then its paragraph does not have to be read to know what it does.
+ */
+private fun AppMode.choiceTitleRes(): Int = when (this) {
+    AppMode.LIST -> R.string.config_mode_list
+    AppMode.DIRECT -> R.string.config_mode_direct
+    AppMode.MIX -> R.string.config_mode_mix_choice
+}
+
 private fun AppMode.descriptionRes(): Int = when (this) {
     AppMode.LIST -> R.string.config_mode_list_desc
     AppMode.DIRECT -> R.string.config_mode_direct_desc
@@ -207,7 +218,7 @@ private fun ModePickerDialog(
                         ) {
                             Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
                                 Column(Modifier.weight(1f)) {
-                                    Text(stringResource(candidate.labelRes()), style = MaterialTheme.typography.titleMedium)
+                                    Text(stringResource(candidate.choiceTitleRes()), style = MaterialTheme.typography.titleMedium)
                                     Spacer(Modifier.padding(top = 4.dp))
                                     Text(stringResource(candidate.descriptionRes()), style = MaterialTheme.typography.bodyMedium)
                                 }
