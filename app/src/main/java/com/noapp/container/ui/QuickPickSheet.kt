@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -57,6 +58,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.noapp.container.R
@@ -73,6 +75,9 @@ import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 private const val ENTER_EXIT_ANIM_MS = 260
+
+/** A sheet is a phone-shaped thing: on a landscape screen it keeps that width, centred. */
+private val SHEET_MAX_WIDTH = 420.dp
 private const val DISMISS_DRAG_THRESHOLD_DP = 100
 private const val DISMISS_FLING_VELOCITY_DP_PER_S = 1000
 
@@ -161,7 +166,12 @@ fun QuickPickSheet(
         (context as? Activity)?.finish()
     }
 
-    val maxListHeight = (LocalConfiguration.current.screenHeightDp * 0.6f).dp
+    val configuration = LocalConfiguration.current
+    val maxListHeight = (configuration.screenHeightDp * 0.6f).dp
+    // Held sideways the screen is far wider than a sheet ever is, and a full-width list puts the
+    // labels a hand's width away from their icons. The sheet keeps a phone's width there and stays
+    // centred, which is also what the mode picker's example shows for these modes.
+    val wideLandscape = configuration.screenWidthDp > configuration.screenHeightDp
 
     Box(Modifier.fillMaxSize()) {
         // No scrim drawn here on purpose — just an invisible full-screen tap target so
@@ -181,6 +191,7 @@ fun QuickPickSheet(
             color = BottomSheetDefaults.ContainerColor,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
+                .widthIn(max = if (wideLandscape) SHEET_MAX_WIDTH else Dp.Unspecified)
                 .fillMaxWidth()
                 .offset { IntOffset(0, (offsetY.value + dragOffset).roundToInt()) }
                 .draggable(
