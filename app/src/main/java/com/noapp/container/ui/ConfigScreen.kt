@@ -457,14 +457,19 @@ fun ConfigScreen(
                                 // Same 24dp as the reorder handle beside them, so the row reads as one
                                 // line of controls; both markers are vectors from the icon set the app
                                 // already uses (the rocket is the tile's own drawable), never an emoji.
+                                val isTileTarget = slot.targetKey != null && slot.targetKey == tileSlot
+                                // Every inactive control in this row — star, rocket, ✕ and the reorder
+                                // handle — is the same grey at the same strength, so the row reads as one
+                                // set; only an ACTIVE star or rocket stands out, in hue and in brightness
+                                // (the filled star drawable against the outlined one does the rest).
+                                val inactiveTint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                                 Icon(
                                     painterResource(
                                         if (index == 0) R.drawable.ic_marker_star
                                         else R.drawable.ic_marker_star_outline
                                     ),
                                     contentDescription = stringResource(R.string.config_main_marker),
-                                    tint = if (index == 0) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = if (index == 0) MaterialTheme.colorScheme.primary else inactiveTint,
                                     modifier = Modifier
                                         .size(24.dp)
                                         .clickable {
@@ -481,15 +486,12 @@ fun ConfigScreen(
                                     }
                                 )
                                 Spacer(Modifier.width(14.dp))
-                                val isTileTarget = slot.targetKey != null && slot.targetKey == tileSlot
                                 Icon(
                                     painterResource(R.drawable.ic_tile),
                                     contentDescription = stringResource(R.string.config_tile_marker),
-                                    tint = if (isTileTarget) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = if (isTileTarget) MaterialTheme.colorScheme.primary else inactiveTint,
                                     modifier = Modifier
                                         .size(24.dp)
-                                        .alpha(if (isTileTarget) 1f else 0.45f)
                                         .clickable(enabled = slot.isConfigured) {
                                             val key = slot.targetKey ?: return@clickable
                                             val wasAssigned = tileSlot == key
@@ -508,7 +510,7 @@ fun ConfigScreen(
                                 Icon(
                                     Icons.Default.Close,
                                     contentDescription = stringResource(R.string.common_close),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = inactiveTint,
                                     modifier = Modifier
                                         .size(24.dp)
                                         .clickable {
@@ -528,7 +530,11 @@ fun ConfigScreen(
                                     }
                                 )
                                 Spacer(Modifier.width(16.dp))
-                                Icon(Icons.Default.Menu, contentDescription = reorderDesc)
+                                Icon(
+                                    Icons.Default.Menu,
+                                    contentDescription = reorderDesc,
+                                    tint = inactiveTint
+                                )
                             }
                         },
                         modifier = Modifier
