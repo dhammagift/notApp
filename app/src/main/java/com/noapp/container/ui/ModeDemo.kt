@@ -2,7 +2,6 @@ package com.noapp.container.ui
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,10 +14,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -81,16 +80,17 @@ import kotlin.math.roundToInt
  * The example at the foot of the mode picker: how the mode that is selected right now behaves,
  * drawn from the user's real slots. The cards above stay text only, so this reads as their picture.
  *
- * It fills whatever height the picker leaves it, and its rows are the real ones rather than a
- * diagram of them: the same [ListItem] the sheet builds, with the slot's own icon and label, under
- * the same drag handle, in a real [LazyColumn] — so a long config scrolls here exactly as it does in
- * the sheet. Swiping the handle down collapses it to that handle alone and tapping the handle brings
- * it back, which is what the real sheet does with a downward swipe.
+ * The panel stands in for the screen and the sheet is drawn at its bottom edge, at the height its own
+ * content needs — the sheet never stretches to fill the panel, because that leaves a coloured tail
+ * under the last row that the real sheet does not have.
  *
- * It shows the mode that is on right now simply because it can only show that one — the dialog
- * closes on the tap that selects a mode, so there is no way to preview another without choosing it.
- * With nothing configured the rows are numbered placeholders, which is what an empty config looks
- * like. Nothing is ever launched to draw any of it.
+ * Its rows are the real ones: the same [ListItem] the sheet builds, with the slot's own icon and
+ * label, under the same drag handle, in a real [LazyColumn] — plus the recent-apps strip when the
+ * user has that turned on, since the picker is handed the same toggle the sheet reads and the same
+ * query fills both. Swiping the handle down collapses the sheet to that handle; tapping it brings the
+ * list back. The example shows the mode that is on right now because that is the only one it can
+ * show: the dialog stays open across a choice, so the example follows the tap. Nothing is ever
+ * launched to draw any of it.
  */
 @Composable
 fun ModeDemo(
@@ -102,9 +102,10 @@ fun ModeDemo(
 ) {
     val items = if (slots.isEmpty()) List(PLACEHOLDER_ROWS) { ShortcutSlot(id = it) } else slots
     val context = LocalContext.current
+    val density = LocalDensity.current
     var recentApps by remember { mutableStateOf<List<RecentApp>>(emptyList()) }
-    // Only when the user turned the strip on: the sheet shows it then, so the example has to as
-    // well, or it would be describing a different sheet than the one that opens.
+    // The sheet's own rule: the strip appears when the setting is on AND usage access was granted.
+    // With either missing there is nothing to draw, and that row keeps only the gear.
     LaunchedEffect(showRecentApps) {
         recentApps = if (showRecentApps) {
             withContext(Dispatchers.IO) { RecentApps.query(context) }
@@ -112,25 +113,25 @@ fun ModeDemo(
             emptyList()
         }
     }
+    var sheetHeightPx by remember { mutableIntStateOf(0) }
+
     Surface(
         modifier = modifier,
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surface,
-        // A hairline as well as the colour step: with dynamic colour the theme's own surface can
-        // land very close to the dialog's own background, and the example must still read as a
-        // panel rather than as loose rows.
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        color = MaterialTheme.colorScheme.surfaceContainer
     ) {
         // Keyed on the mode: switching modes must show the new example expanded, not the state the
         // previous one was left in (a sheet collapsed to its handle, say).
         key(mode) {
             when (mode) {
-                AppMode.LIST -> DemoSheet(
-                    items = items,
-                    startNumber = 1,
-                    recentApps = recentApps,
-                    modifier = Modifier.fillMaxSize()
-                )
+                AppMode.LIST -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                    DemoSheet(
+                        items = items,
+                        startNumber = 1,
+                        recentApps = recentApps,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
 
                 AppMode.DIRECT -> Column(
                     Modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -147,22 +148,36 @@ fun ModeDemo(
                     DemoHint()
                 }
 
-                // The same hero icon, with the real list of the rest starting at its midline: the mode's
-                // own "one item, then everything else" shape. A column rather than fixed offsets, so it
-                // stays right at any panel height.
-                AppMode.MIX -> Column(Modifier.fillMaxSize()) {
-                    DemoHint(Modifier.padding(top = 10.dp))
-                    Box(Modifier.fillMaxWidth().weight(1f)) {
-                        HeroIcon(items[0], 1, onShowShortcuts, Modifier.align(Alignment.TopCenter))
-                        DemoSheet(
-                            items = items.drop(1),
-                            startNumber = 2,
-                            recentApps = recentApps,
-                            modifier = Modifier
-                                .align(Alignment.TopCenter)
-                                .padding(top = HERO_ICON / 2, start = 24.dp, end = 24.dp)
-                                .fillMaxHeight()
-                        )
+                // The same hero icon, with the real list of the rest starting at its midline: the
+                // mode's own "one item, then everything else" shape. The icon block is lifted by the
+                // sheet's measured height, so its midline meets the sheet's top edge at any panel
+                // height and the icon is never half cut off by it.
+                AppMode.MIX -> Box(Modifier.fillMaxSize()) {
+                    DemoSheet(
+                        items = items.drop(1),
+                        startNumber = 2,
+                        recentApps = recentApps,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .padding(horizontal = MIX_SHEET_INSET),
+                        onHeight = { sheetHeightPx = it }
+                    )
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .offset {
+                                IntOffset(
+                                    0,
+                                    -(sheetHeightPx - with(density) { HERO_ICON.toPx() / 2f }.roundToInt())
+                                )
+                            }
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            DemoHint()
+                            Spacer(Modifier.height(6.dp))
+                            HeroIcon(items[0], 1, onShowShortcuts)
+                        }
                     }
                 }
             }
@@ -171,8 +186,11 @@ fun ModeDemo(
 }
 
 /**
- * The sheet's own chrome: same handle, same rows, and a downward swipe on the handle collapses it
- * to that handle alone — the sheet's own gesture, with the list left scrollable underneath it.
+ * The sheet's own chrome: same handle, same rows, and a downward swipe on the handle collapses it to
+ * that handle alone — the sheet's own gesture, with the list left scrollable underneath it.
+ *
+ * Its height comes from its content ([heightIn] plus a non-filling weight on the list), so a short
+ * config gives a short sheet and a long one stops growing at the cap and scrolls instead.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -180,7 +198,8 @@ private fun DemoSheet(
     items: List<ShortcutSlot>,
     startNumber: Int,
     recentApps: List<RecentApp>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onHeight: (Int) -> Unit = {}
 ) {
     val density = LocalDensity.current
     val collapseThresholdPx = with(density) { COLLAPSE_THRESHOLD.toPx() }
@@ -199,7 +218,11 @@ private fun DemoSheet(
 
     Surface(
         modifier = modifier
-            .onSizeChanged { sheetHeightPx = it.height }
+            .heightIn(max = SHEET_MAX_HEIGHT)
+            .onSizeChanged {
+                sheetHeightPx = it.height
+                onHeight(it.height)
+            }
             .offset { IntOffset(0, (settledPx + dragPx).roundToInt()) }
             .draggable(
                 orientation = Orientation.Vertical,
@@ -214,7 +237,7 @@ private fun DemoSheet(
                     }
                 }
             ),
-        shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp),
+        shape = RoundedCornerShape(topStart = SHEET_CORNER, topEnd = SHEET_CORNER),
         color = MaterialTheme.colorScheme.surfaceVariant,
         shadowElevation = 4.dp
     ) {
@@ -257,7 +280,9 @@ private fun DemoSheet(
                     }
                 }
                 if (recentApps.isNotEmpty()) HorizontalDivider()
-                LazyColumn(Modifier.weight(1f)) {
+                // fill = false is what keeps the sheet content-sized: the list takes its own height
+                // when it is short, and the cap plus a scroll when it is not.
+                LazyColumn(Modifier.weight(1f, fill = false)) {
                     itemsIndexed(items, key = { index, _ -> index }) { index, slot ->
                         // Same row as the real sheet: the slot's icon and its label, nothing added.
                         ListItem(
@@ -294,7 +319,8 @@ fun ShortcutMenuOverlay(appName: String, slots: List<ShortcutSlot>, onDismiss: (
     ) {
         Surface(
             // Taps on the card itself are swallowed, so only an outside tap dismisses it — the same
-            // as the menu it imitates.
+            // as the menu it imitates. Its width is what its icons and labels need and no wider: the
+            // real menu is a phone-sized card, and stretched across a tablet it looked nothing like it.
             modifier = Modifier
                 .widthIn(max = MENU_MAX_WIDTH)
                 .fillMaxWidth()
@@ -392,8 +418,13 @@ private val DEMO_PADDING = 8.dp
 private val HERO_ICON = 104.dp
 private val HANDLE_STRIP = 40.dp
 private val COLLAPSE_THRESHOLD = 40.dp
+private val SHEET_CORNER = 22.dp
+private val MIX_SHEET_INSET = 24.dp
+
+/** The most the sheet grows to before its list scrolls instead. */
+private val SHEET_MAX_HEIGHT = 460.dp
 private const val COLLAPSE_ANIM_MS = 220
-private const val PLACEHOLDER_ROWS = 4
+private const val PLACEHOLDER_ROWS = 5
 private const val SHORTCUT_MENU_ROWS = 4
 private const val SCRIM_ALPHA = 0.32f
 
