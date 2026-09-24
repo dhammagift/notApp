@@ -78,9 +78,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.drawable.toBitmap
 import com.noapp.container.R
 import com.noapp.container.icon.AppIcon
 import com.noapp.container.icon.SlotIcon
+import com.noapp.container.icon.enabledLauncherComponent
 import com.noapp.container.icon.monogramBitmap
 import com.noapp.container.model.AppMode
 import com.noapp.container.model.ShortcutSlot
@@ -113,6 +115,8 @@ fun ModeDemo(
     showRecentApps: Boolean,
     showPeekBubble: Boolean,
     useAllSlotsInDirectMode: Boolean,
+    peekBubbleSize: Float,
+    peekBubbleAlpha: Float,
     onShowShortcuts: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -172,13 +176,7 @@ fun ModeDemo(
                         ) {
                             DemoHint()
                             Spacer(Modifier.height(8.dp))
-                            HeroIcon(items[0], 1, onShowShortcuts)
-                            Spacer(Modifier.height(10.dp))
-                            Text(
-                                stringResource(R.string.mode_demo_direct_opens, labelOf(items[0], 1)),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.92f)
-                            )
+                            HeroIcon(items[0], onShowShortcuts)
                         }
 
                         // The icon the mode would launch first, then the list of the rest under it.
@@ -190,7 +188,7 @@ fun ModeDemo(
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     DemoHint()
                                     Spacer(Modifier.height(6.dp))
-                                    HeroIcon(items[0], 1, onShowShortcuts)
+                                    HeroIcon(items[0], onShowShortcuts)
                                 }
                             }
                             DemoSheet(
@@ -202,7 +200,12 @@ fun ModeDemo(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = MIX_SHEET_INSET)
-                                    .heightIn(max = MIX_SHEET_MAX_HEIGHT)
+                                    // Everything the panel has above the icon block: a fixed cap here
+                                    // made Mix's list stop halfway while List's ran the full height.
+                                    .heightIn(
+                                        max = (panelHeight - MIX_ICON_SPACE)
+                                            .coerceAtLeast(MIX_SHEET_MIN_HEIGHT)
+                                    )
                             )
                         }
                     }
@@ -212,6 +215,8 @@ fun ModeDemo(
                         DemoPeekBubble(
                             panelWidth = panelWidth,
                             panelHeight = panelHeight,
+                            size = PEEK_BUBBLE * peekBubbleSize,
+                            alpha = peekBubbleAlpha,
                             onOpen = { collapsed = false },
                             onRemove = { bubbleRemoved = true }
                         )
@@ -357,73 +362,69 @@ private fun DemoSheet(
 }
 
 /**
- * The floating button the list collapses into, at the size, colour and corner the real one has. It can
- * be dragged — onto ✕ to get rid of it, exactly like the app's drag-to-remove — or tapped to bring the
- * list back.
+ * The floating button the list collapses into: the real one's size, colour, opacity and corner, from
+ * the same settings that scale and fade it in the app. It can be dragged anywhere in the panel — the
+ * position is clamped to the panel's edges — tapped to bring the list back, or removed by tapping the
+ * ✕ (which is also what dropping it on that ✕ does, the way the app's drag-to-remove works).
  */
 @Composable
 private fun BoxScope.DemoPeekBubble(
     panelWidth: Dp,
     panelHeight: Dp,
+    size: Dp,
+    alpha: Float,
     onOpen: () -> Unit,
     onRemove: () -> Unit
 ) {
     val density = LocalDensity.current
-    var offset by remember { mutableStateOf(Offset.Zero) }
-    var dragging by remember { mutableStateOf(false) }
-    val bubbleRadius = PEEK_BUBBLE / 2
-    // Everything below is in pixels: the bubble's centre is a pixel offset away from its anchored
-    // corner, and mixing that with Dp constants is how a comparison ends up between a Float and a Dp.
-    val restingX = with(density) { (panelWidth - PEEK_MARGIN - bubbleRadius).toPx() }
-    val restingY = with(density) { (panelHeight - PEEK_MARGIN * 3 - bubbleRadius).toPx() }
-    val centerX = restingX + offset.x
-    val centerY = restingY + offset.y
-    val trashCenterX = with(density) { (panelWidth / 2).toPx() }
-    val trashTopY = with(density) { (panelHeight - TRASH_SNAP_DP * 2).toPx() }
-    val overTrash = abs(centerX - trashCenterX) < with(density) { TRASH_SNAP_DP.toPx() } &&
-        centerY > trashTopY
+    var drag by remember { mutableStateOf(Offset.Zero) }
+    val sizePx = with(density) { size.toPx() }
+    val panelWidthPx = with(density) { panelWidth.toPx() }
+    val panelHeightPx = with(density) { panelHeight.toPx() }
+    val marginPx = with(density) { PEEK_MARGIN.toPx() }
+    // Where the app parks it: bottom-end, a little clear of the very edge.
+    val restX = panelWidthPx - sizePx - marginPx
+    val restY = panelHeightPx - sizePx - marginPx * 3
+    val centerX = restX + drag.x + sizePx / 2
+    val centerY = restY + drag.y + sizePx / 2
+    val trashCenterX = panelWidthPx / 2
+    val trashCenterY = panelHeightPx - with(density) { TRASH_BOTTOM_MARGIN.toPx() } -
+        with(density) { TRASH_SIZE.toPx() } / 2
+    val snapPx = with(density) { TRASH_SNAP.toPx() }
+    val overTrash = abs(centerX - trashCenterX) < snapPx && abs(centerY - trashCenterY) < snapPx
 
-    if (dragging) {
-        // The same red target as the app's, shown only while a drag is actually happening.
-        Box(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 24.dp)
-                .size(TRASH_SIZE)
-                .background(if (overTrash) TRASH_ACTIVE else TRASH_IDLE, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painterResource(R.drawable.ic_close_bubble),
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(26.dp)
-            )
-        }
+    Box(
+        Modifier
+            .align(Alignment.BottomCenter)
+            .padding(bottom = TRASH_BOTTOM_MARGIN)
+            .size(TRASH_SIZE)
+            .background(if (overTrash) TRASH_ACTIVE else TRASH_IDLE, CircleShape)
+            .clickable(onClick = onRemove),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            painterResource(R.drawable.ic_close_bubble),
+            contentDescription = stringResource(R.string.settings_peek_bubble_returns),
+            tint = Color.White,
+            modifier = Modifier.size(26.dp)
+        )
     }
 
     Box(
         Modifier
-            .align(Alignment.BottomEnd)
-            .padding(end = PEEK_MARGIN, bottom = PEEK_MARGIN * 3)
-            .offset { IntOffset(offset.x.roundToInt(), offset.y.roundToInt()) }
-            .size(PEEK_BUBBLE)
+            .align(Alignment.BottomStart)
+            .offset { IntOffset((restX + drag.x).roundToInt(), (restY + drag.y).roundToInt()) }
+            .size(size)
+            .graphicsLayer { this.alpha = alpha }
             .background(PEEK_COLOR, CircleShape)
             .pointerInput(Unit) { detectTapGestures { onOpen() } }
-            .pointerInput(Unit) {
+            .pointerInput(sizePx) {
                 detectDragGestures(
-                    onDragStart = { dragging = true },
-                    onDragEnd = {
-                        dragging = false
-                        if (overTrash) onRemove() else offset = Offset.Zero
-                    },
-                    onDragCancel = {
-                        dragging = false
-                        offset = Offset.Zero
-                    },
-                    onDrag = { change, drag ->
+                    onDragEnd = { if (overTrash) onRemove() },
+                    onDragCancel = {}, 
+                    onDrag = { change, delta ->
                         change.consume()
-                        offset += drag
+                        drag = clampInside(drag + delta, restX, restY, sizePx, panelWidthPx, panelHeightPx)
                     }
                 )
             },
@@ -433,10 +434,17 @@ private fun BoxScope.DemoPeekBubble(
             painterResource(R.drawable.ic_list_bubble),
             contentDescription = null,
             tint = Color.White,
-            modifier = Modifier.size(22.dp)
+            modifier = Modifier.size(size * 0.46f)
         )
     }
 }
+
+/** Keeps the button inside the panel: it can be parked anywhere, but never half off the edge. */
+private fun clampInside(drag: Offset, restX: Float, restY: Float, sizePx: Float, panelWidthPx: Float, panelHeightPx: Float): Offset =
+    Offset(
+        drag.x.coerceIn(-restX, (panelWidthPx - sizePx - restX).coerceAtLeast(-restX)),
+        drag.y.coerceIn(-restY, (panelHeightPx - sizePx - restY).coerceAtLeast(-restY))
+    )
 
 /**
  * Our own drawing of the launcher's long-press menu. The real one belongs to the launcher and cannot
@@ -540,14 +548,14 @@ fun ShortcutMenuOverlay(
 }
 
 /**
- * The item that would be launched: holding it opens the shortcut menu, and tapping it shows what a tap
- * actually does — the item opens. Nothing is launched either way; the pop and the "Opened" pill are
- * the whole effect.
+ * The launcher icon the user actually has — whichever variant is enabled in Settings, not a stand-in —
+ * because that is the icon on their home screen and the one the long-press menu belongs to. Holding it
+ * opens that menu; tapping it shows what pressing it does instead: the item below opens. The line under
+ * it carries the opening item's own icon, so "which app" is answered by the app itself.
  */
 @Composable
 private fun HeroIcon(
-    slot: ShortcutSlot,
-    number: Int,
+    target: ShortcutSlot,
     onShowShortcuts: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -570,18 +578,30 @@ private fun HeroIcon(
                     scaleX = pop
                     scaleY = pop
                 }
-                .pointerInput(slot) {
+                .pointerInput(target) {
                     detectTapGestures(
                         onTap = { opened = true },
                         onLongPress = { onShowShortcuts() }
                     )
                 }
         ) {
-            DemoIcon(slot, number, HERO_ICON)
+            LauncherIcon(HERO_ICON)
+        }
+        Row(
+            Modifier.padding(top = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DemoIcon(target, target.id + 1, 24.dp)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                stringResource(R.string.mode_demo_direct_opens, labelOf(target, target.id + 1)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.92f)
+            )
         }
         if (opened) {
             Text(
-                "👍 " + stringResource(R.string.mode_demo_opened, labelOf(slot, number)),
+                "👍 " + stringResource(R.string.mode_demo_opened, labelOf(target, target.id + 1)),
                 style = MaterialTheme.typography.labelMedium,
                 color = Color.White,
                 modifier = Modifier
@@ -590,6 +610,21 @@ private fun HeroIcon(
                     .padding(horizontal = 12.dp, vertical = 5.dp)
             )
         }
+    }
+}
+
+/** The enabled launcher icon, straight from PackageManager — the one on the home screen. */
+@Composable
+private fun LauncherIcon(size: Dp) {
+    val context = LocalContext.current
+    val sizePx = with(LocalDensity.current) { size.roundToPx() }
+    val bitmap = remember(sizePx) {
+        runCatching {
+            context.packageManager.getActivityIcon(enabledLauncherComponent(context)).toBitmap(sizePx, sizePx)
+        }.getOrNull()?.asImageBitmap()
+    }
+    if (bitmap != null) {
+        Image(bitmap = bitmap, contentDescription = null, modifier = Modifier.size(size))
     }
 }
 
@@ -678,8 +713,9 @@ private val COLLAPSE_THRESHOLD = 40.dp
 private val SHEET_CORNER = 22.dp
 private val MIX_SHEET_INSET = 24.dp
 
-/** Mix shows the list under the icon, and never taller than this, so the icon stays visible. */
-private val MIX_SHEET_MAX_HEIGHT = 220.dp
+/** Room Mix keeps for the icon block above its list, so the list can still run to the bottom. */
+private val MIX_ICON_SPACE = 190.dp
+private val MIX_SHEET_MIN_HEIGHT = 120.dp
 
 /** The most the sheet grows to before its list scrolls instead. */
 private val SHEET_MAX_HEIGHT = 460.dp
@@ -688,7 +724,8 @@ private val SHEET_MAX_HEIGHT = 460.dp
 private val PEEK_BUBBLE = 48.dp
 private val PEEK_MARGIN = 20.dp
 private val TRASH_SIZE = 64.dp
-private val TRASH_SNAP_DP = 72.dp
+private val TRASH_BOTTOM_MARGIN = 24.dp
+private val TRASH_SNAP = 72.dp
 private val PEEK_COLOR = Color(0xCC3C4043)
 private val TRASH_IDLE = Color(0xE6D32F2F)
 private val TRASH_ACTIVE = Color(0xFFEF5350)
