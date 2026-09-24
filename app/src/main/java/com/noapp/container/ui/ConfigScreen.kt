@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -106,6 +107,9 @@ import com.noapp.container.model.SlotType
 
 private const val MAX_FILL_SELECTION = 20
 
+/** Never taller than this, however long the descriptions get: the example below needs room too. */
+private val CARDS_MAX_HEIGHT = 340.dp
+
 private fun SlotType.icon(): ImageVector = when (this) {
     SlotType.APP -> AndroidIcon
     SlotType.URL -> LinkIcon
@@ -152,6 +156,7 @@ private fun ModePickerDialog(
     val context = LocalContext.current
     var pendingMode by remember { mutableStateOf<AppMode?>(null) }
     var showGearExplainer by remember { mutableStateOf(false) }
+    var shortcutsShown by remember { mutableStateOf(false) }
     val overlaySettingsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
@@ -203,86 +208,98 @@ private fun ModePickerDialog(
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
-            Column(Modifier.fillMaxSize()) {
-                TopAppBar(
-                    title = { Text(stringResource(R.string.config_mode_dialog_title)) },
-                    navigationIcon = {
-                        IconButton(onClick = onDismiss) {
-                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_close))
+            Box(Modifier.fillMaxSize()) {
+                Column(Modifier.fillMaxSize()) {
+                    TopAppBar(
+                        title = { Text(stringResource(R.string.config_mode_dialog_title)) },
+                        navigationIcon = {
+                            IconButton(onClick = onDismiss) {
+                                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_close))
+                            }
                         }
-                    }
-                )
-                Column(
-                    Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 8.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    AppMode.entries.forEach { candidate ->
-                        val selected = candidate == currentMode
-                        Surface(
-                            onClick = { selectMode(candidate) },
-                            shape = MaterialTheme.shapes.medium,
-                            color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(stringResource(candidate.choiceTitleRes()), style = MaterialTheme.typography.titleMedium)
-                                    Spacer(Modifier.padding(top = 4.dp))
-                                    // Direct's description carries two facts, and the second one —
-                                    // that Settings moved into the long-press menu — is the one nobody
-                                    // reads past. Bold and in the theme's alert colour, so choosing the
-                                    // mode is itself where that is learned.
-                                    val description = if (candidate == AppMode.DIRECT) {
-                                        buildAnnotatedString {
-                                            append(stringResource(R.string.config_mode_direct_desc))
-                                            append(" ")
-                                            // Only the word "Settings" is coloured; the phrase it belongs
-                                            // to is bold, and the parenthetical tail is ordinary text —
-                                            // the emphasis marks the fact, not the whole paragraph.
-                                            withStyle(
-                                                SpanStyle(
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = MaterialTheme.colorScheme.error
-                                                )
-                                            ) {
-                                                append(stringResource(R.string.config_mode_direct_desc_settings))
-                                            }
-                                            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                    )
+                    Column(
+                        Modifier.heightIn(max = CARDS_MAX_HEIGHT)
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        AppMode.entries.forEach { candidate ->
+                            val selected = candidate == currentMode
+                            Surface(
+                                onClick = { selectMode(candidate) },
+                                shape = MaterialTheme.shapes.medium,
+                                color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(stringResource(candidate.choiceTitleRes()), style = MaterialTheme.typography.titleMedium)
+                                        Spacer(Modifier.padding(top = 4.dp))
+                                        // Direct's description carries two facts, and the second one —
+                                        // that Settings moved into the long-press menu — is the one nobody
+                                        // reads past. Bold and in the theme's alert colour, so choosing the
+                                        // mode is itself where that is learned.
+                                        val description = if (candidate == AppMode.DIRECT) {
+                                            buildAnnotatedString {
+                                                append(stringResource(R.string.config_mode_direct_desc))
                                                 append(" ")
-                                                append(
-                                                    stringResource(
-                                                        R.string.config_mode_direct_desc_settings_suffix
+                                                // Only the word "Settings" is coloured; the phrase it belongs
+                                                // to is bold, and the parenthetical tail is ordinary text —
+                                                // the emphasis marks the fact, not the whole paragraph.
+                                                withStyle(
+                                                    SpanStyle(
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.error
                                                     )
-                                                )
+                                                ) {
+                                                    append(stringResource(R.string.config_mode_direct_desc_settings))
+                                                }
+                                                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                                                    append(" ")
+                                                    append(
+                                                        stringResource(
+                                                            R.string.config_mode_direct_desc_settings_suffix
+                                                        )
+                                                    )
+                                                }
+                                                append(" ")
+                                                append(stringResource(R.string.config_mode_direct_desc_tail))
                                             }
-                                            append(" ")
-                                            append(stringResource(R.string.config_mode_direct_desc_tail))
+                                        } else {
+                                            AnnotatedString(stringResource(candidate.descriptionRes()))
                                         }
-                                    } else {
-                                        AnnotatedString(stringResource(candidate.descriptionRes()))
+                                        Text(description, style = MaterialTheme.typography.bodyMedium)
                                     }
-                                    Text(description, style = MaterialTheme.typography.bodyMedium)
-                                }
-                                if (selected) {
-                                    Icon(
-                                        Icons.Default.Check,
-                                        contentDescription = null,
-                                        modifier = Modifier.padding(start = 8.dp)
-                                    )
+                                    if (selected) {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.padding(start = 8.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
+                    // Outside the scrolling part and weighted, so it takes all the height the cards
+                    // leave: the picture of the mode that is on right now, never covering them.
+                    ModeDemo(
+                        mode = currentMode,
+                        slots = slots,
+                        onShowShortcuts = { shortcutsShown = true },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                    )
                 }
-                // Pinned to the bottom of the dialog rather than trailing the cards: it is the
-                // picture of the mode that is on right now, and being outside the scrolling part is
-                // what keeps it from ever covering the three descriptions.
-                ModeDemo(
-                    mode = currentMode,
-                    slots = slots,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                )
+                if (shortcutsShown) {
+                    ShortcutMenuOverlay(
+                        appName = stringResource(R.string.app_name),
+                        slots = slots,
+                        onDismiss = { shortcutsShown = false }
+                    )
+                }
             }
         }
     }
