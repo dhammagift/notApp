@@ -257,6 +257,11 @@ fun QuickPickSheet(
                         )
                     }
                 }
+                // Rating ask, and only when the list is the reason the sheet is open: in the
+                // share sheet the user is mid-task and has no patience for it.
+                if (sharedText == null) {
+                    ReviewCardIfDue(Modifier.padding(horizontal = 12.dp, vertical = 10.dp))
+                }
             }
         }
     }

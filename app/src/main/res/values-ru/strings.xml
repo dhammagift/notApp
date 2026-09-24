@@ -28,6 +28,13 @@
     <string name="settings_share">Поделиться</string>
     <string name="settings_share_text">Посмотри Not App: %1$s</string>
     <string name="settings_rate_app">Оценить приложение</string>
+    <!-- Карточка оценки: своя иконка и слова «Not App» — именно это снимает двусмысленность
+         в режиме «Прямой», где простое «оцените нас» читалось бы как оценка открытого приложения. -->
+    <string name="review_card_title">Оцените Not App</string>
+    <string name="review_card_body">Пара слов в Play очень помогает маленькому приложению. Оценка уйдёт Not App, а не тому приложению, которое он открывает.</string>
+    <string name="review_card_rate">Оценить</string>
+    <string name="review_card_later">Позже</string>
+    <string name="review_card_never">Не просить</string>
     <string name="settings_rate_app_hint">Настоящая звезда здесь — вы. Чем больше ⭐, тем лучше.</string>
     <string name="settings_source_code">Исходный код</string>
     <string name="settings_latest_release">GitHub</string>
@@ -75,9 +82,11 @@
     <string name="config_mode_list">☰ Список</string>
     <string name="config_mode_direct">▶ Прямой</string>
     <string name="config_mode_mix">◫ Микс</string>
-    <!-- В выборе режима «Микс» расшифрован как сумма двух других, чтобы описание под ним
-         было уже необязательным. Кнопка в шапке оставляет короткий config_mode_mix. -->
-    <string name="config_mode_mix_choice">◫ Микс = Список + Прямой</string>
+    <!-- В выборе режима каждый режим расшифрован в первой строке, чтобы описание под ним
+         было уже необязательным. Кнопка в шапке оставляет короткие config_mode_*. -->
+    <string name="config_mode_list_choice">☰ Список ~ как папка</string>
+    <string name="config_mode_direct_choice">▶ Прямой = приложение №1 + шорткаты</string>
+    <string name="config_mode_mix_choice">◫ Микс = Прямой + Список</string>
     <string name="config_mode_dialog_title">Выбор режима</string>
     <string name="config_mode_list_desc">Я открываю список ярлыков. А если долго удержите мою иконку — сразу покажу первые 4 ярлыка как шорткаты.</string>
     <string name="config_mode_direct_desc">Я сразу открываю первый ярлык.</string>

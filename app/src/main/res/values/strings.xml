@@ -30,6 +30,13 @@
     <string name="settings_share">Share</string>
     <string name="settings_share_text">Check out Not App: %1$s</string>
     <string name="settings_rate_app">Rate app</string>
+    <!-- The rating card: its own icon and the words "Not App" are what make it unambiguous in
+         DIRECT mode, where a bare "rate us" would read as being about the app Not App opened. -->
+    <string name="review_card_title">Rate Not App</string>
+    <string name="review_card_body">A few words on Play help a small app a lot — and the rating goes to Not App, not to the app it opens.</string>
+    <string name="review_card_rate">Rate</string>
+    <string name="review_card_later">Later</string>
+    <string name="review_card_never">Never ask</string>
     <string name="settings_rate_app_hint">You\'re the real star here. The more ⭐, the better.</string>
     <string name="settings_source_code">Source code</string>
     <string name="settings_latest_release">GitHub</string>
@@ -77,9 +84,11 @@
     <string name="config_mode_list">☰ List</string>
     <string name="config_mode_direct">▶ Direct</string>
     <string name="config_mode_mix">◫ Mix</string>
-    <!-- The picker spells Mix out as the sum of the other two modes, so the paragraph under it
-         only adds detail. The toolbar button keeps the short config_mode_mix. -->
-    <string name="config_mode_mix_choice">◫ Mix = List + Direct</string>
+    <!-- The picker spells each mode out on its title line, so the paragraph under it only adds
+         detail. The toolbar button keeps the short config_mode_* labels. -->
+    <string name="config_mode_list_choice">☰ List ~ like a folder</string>
+    <string name="config_mode_direct_choice">▶ Direct = your #1 app + shortcuts</string>
+    <string name="config_mode_mix_choice">◫ Mix = Direct + List</string>
     <string name="config_mode_dialog_title">Choose mode</string>
     <string name="config_mode_list_desc">I open the shortcut list. Long-press my icon and I\'ll show you the first 4 items as shortcuts right away.</string>
     <string name="config_mode_direct_desc">I launch your first item right away.</string>

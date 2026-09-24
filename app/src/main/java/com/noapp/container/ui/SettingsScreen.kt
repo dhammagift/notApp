@@ -457,20 +457,14 @@ fun SettingsScreen(
                 }
             )
             HorizontalDivider()
+            // Due only twice in the app's life (see ReviewStore), so it is worth the space:
+            // in DIRECT mode this screen is the only place Not App itself is on screen.
+            ReviewCardIfDue(Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
             ListItem(
                 headlineContent = { Text(stringResource(R.string.settings_rate_app)) },
                 supportingContent = { Text(stringResource(R.string.settings_rate_app_hint)) },
                 leadingContent = { Icon(Icons.Default.Star, contentDescription = null) },
-                modifier = Modifier.clickable {
-                    val pkg = context.packageName
-                    runCatching {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$pkg")))
-                    }.onFailure {
-                        context.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$pkg"))
-                        )
-                    }
-                }
+                modifier = Modifier.clickable { openStorePage(context) }
             )
             ListItem(
                 headlineContent = { Text(stringResource(R.string.settings_privacy_policy)) },
