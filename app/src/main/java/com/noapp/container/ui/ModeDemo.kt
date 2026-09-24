@@ -501,10 +501,10 @@ private const val MARK_ALPHA = 0.16f
  * over a blue-to-violet backdrop, and the palette's first colour disappeared into it.
  */
 private val PLACEHOLDER_COLORS = listOf(
-    Color(0xFFC0574C),
-    Color(0xFFD9A441),
-    Color(0xFFC97A3D),
-    Color(0xFF8B8D91)
+    "#C0574C",
+    "#D9A441",
+    "#C97A3D",
+    "#8B8D91"
 )
 
 /** The real menu is a phone-sized card, not a full-width sheet — capped so a tablet gets that too. */
