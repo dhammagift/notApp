@@ -103,6 +103,8 @@
     <!-- The two markers on a slot row in the list. The star is the item a plain tap opens (DIRECT
          and MIX launch slot 0, so tapping a star moves the row to the top); the rocket is the item
          the Quick Settings tile launches, which is independent of the order. -->
+    <string name="config_main_marker">Main item, opened by a plain tap</string>
+    <string name="config_tile_marker">Launched by the shade tile</string>
     <string name="config_main_marker_hint">A plain tap launches this one: on its own in Direct, with the list on top in Mix.</string>
     <string name="config_tile_marker_on">The Quick Settings tile launches this one.</string>
     <string name="config_tile_marker_off">The Quick Settings tile opens the list again.</string>

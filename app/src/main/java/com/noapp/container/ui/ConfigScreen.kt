@@ -22,6 +22,7 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -78,6 +79,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -441,12 +443,20 @@ fun ConfigScreen(
                                 // storing a second, competing notion of "main".
                                 // The rocket is "the Quick Settings tile launches this item" — it sits
                                 // on any row and never touches the order.
-                                Text(
-                                    if (index == 0) "\u2605" else "\u2606",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = if (index == 0) MaterialTheme.colorScheme.primary
+                                // Same 24dp as the reorder handle beside them, so the row reads as one
+                                // line of controls; both markers are vectors from the icon set the app
+                                // already uses (the rocket is the tile's own drawable), never an emoji.
+                                Icon(
+                                    painterResource(
+                                        if (index == 0) R.drawable.ic_marker_star
+                                        else R.drawable.ic_marker_star_outline
+                                    ),
+                                    contentDescription = stringResource(R.string.config_main_marker),
+                                    tint = if (index == 0) MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.clickable {
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clickable {
                                         if (index != 0) {
                                             val promoted = slots.toMutableList()
                                                 .also { it.add(0, it.removeAt(index)) }
@@ -461,11 +471,14 @@ fun ConfigScreen(
                                 )
                                 Spacer(Modifier.width(14.dp))
                                 val isTileTarget = slot.targetKey != null && slot.targetKey == tileSlot
-                                Text(
-                                    "\uD83D\uDE80",
-                                    style = MaterialTheme.typography.titleMedium,
+                                Icon(
+                                    painterResource(R.drawable.ic_tile),
+                                    contentDescription = stringResource(R.string.config_tile_marker),
+                                    tint = if (isTileTarget) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier
-                                        .alpha(if (isTileTarget) 1f else 0.3f)
+                                        .size(24.dp)
+                                        .alpha(if (isTileTarget) 1f else 0.45f)
                                         .clickable(enabled = slot.isConfigured) {
                                             val key = slot.targetKey ?: return@clickable
                                             val wasAssigned = tileSlot == key
@@ -481,9 +494,13 @@ fun ConfigScreen(
                                         }
                                 )
                                 Spacer(Modifier.width(14.dp))
-                                Text(
-                                    "✕",
-                                    modifier = Modifier.clickable {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = stringResource(R.string.common_close),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clickable {
                                         if (slot.isConfigured) {
                                             removeWithUndo(
                                                 previous = slots,
