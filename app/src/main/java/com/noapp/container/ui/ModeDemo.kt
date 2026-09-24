@@ -372,11 +372,16 @@ private fun BoxScope.DemoPeekBubble(
     var offset by remember { mutableStateOf(Offset.Zero) }
     var dragging by remember { mutableStateOf(false) }
     val bubbleRadius = PEEK_BUBBLE / 2
-    // Where this bubble's centre is right now, and where the ✕ sits (bottom centre, as in the app).
-    val centerX = panelWidth - PEEK_MARGIN - bubbleRadius + with(density) { offset.x.toDp() }
-    val centerY = panelHeight - PEEK_MARGIN * 3 - bubbleRadius + with(density) { offset.y.toDp() }
-    val overTrash = abs((centerX - panelWidth / 2).value) < TRASH_SNAP_DP &&
-        centerY > panelHeight - TRASH_SNAP_DP * 2
+    // Everything below is in pixels: the bubble's centre is a pixel offset away from its anchored
+    // corner, and mixing that with Dp constants is how a comparison ends up between a Float and a Dp.
+    val restingX = with(density) { (panelWidth - PEEK_MARGIN - bubbleRadius).toPx() }
+    val restingY = with(density) { (panelHeight - PEEK_MARGIN * 3 - bubbleRadius).toPx() }
+    val centerX = restingX + offset.x
+    val centerY = restingY + offset.y
+    val trashCenterX = with(density) { (panelWidth / 2).toPx() }
+    val trashTopY = with(density) { (panelHeight - TRASH_SNAP_DP * 2).toPx() }
+    val overTrash = abs(centerX - trashCenterX) < with(density) { TRASH_SNAP_DP.toPx() } &&
+        centerY > trashTopY
 
     if (dragging) {
         // The same red target as the app's, shown only while a drag is actually happening.
