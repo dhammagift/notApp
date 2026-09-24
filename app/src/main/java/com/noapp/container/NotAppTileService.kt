@@ -9,7 +9,6 @@ import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import com.noapp.container.data.ConfigStore
-import com.noapp.container.data.LastLaunch
 import com.noapp.container.model.AppConfig
 import com.noapp.container.model.ShortcutSlot
 import com.noapp.container.model.SlotType
@@ -49,13 +48,7 @@ class NotAppTileService : TileService() {
         val slot = assignedSlot()
         // A slot that no longer resolves (its app was uninstalled, its settings were cleared) falls
         // back to the launcher-icon behaviour rather than doing nothing at all.
-        val intent = slot?.let { ActionDispatcher.intentFor(this, it) }
-        if (intent != null) {
-            // Recorded so the list, if it is opened over the app this launches, can leave that item
-            // out — it is the app the user is looking at. See LastLaunch.
-            LastLaunch.remember(this, slot.targetKey)
-        }
-        collapse(intent ?: launcherIntent())
+        collapse(slot?.let { ActionDispatcher.intentFor(this, it) } ?: launcherIntent())
     }
 
     /** The slot the settings point this tile at, or null for "act like the launcher icon". */

@@ -1,7 +1,6 @@
 package com.noapp.container
 
 import com.noapp.container.data.ConfigStore
-import com.noapp.container.data.LastLaunch
 import com.noapp.container.model.AppConfig
 import com.noapp.container.model.AppMode
 import com.noapp.container.model.ShortcutSlot
@@ -71,17 +70,5 @@ class ConfigStoreTest {
     @Test
     fun `an unconfigured slot has no target to point the tile at`() {
         assertEquals(null, ShortcutSlot(id = 0).targetKey)
-    }
-
-    @Test
-    fun `a launch is assumed still on screen only inside the window`() {
-        val now = 1_000_000_000_000L
-        // The MIX sheet hides the item we just launched: fresh means hidden, stale means shown.
-        assertEquals(true, LastLaunch.isFresh(now - 1_000L, now))
-        assertEquals(true, LastLaunch.isFresh(now - LastLaunch.FRESH_MS, now))
-        assertEquals(false, LastLaunch.isFresh(now - LastLaunch.FRESH_MS - 1L, now))
-        // Never launched, or a clock that moved backwards, is not "on screen".
-        assertEquals(false, LastLaunch.isFresh(0L, now))
-        assertEquals(false, LastLaunch.isFresh(now + 60_000L, now))
     }
 }

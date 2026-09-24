@@ -16,7 +16,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.noapp.container.data.ConfigStore
-import com.noapp.container.data.LastLaunch
 import com.noapp.container.icon.applyLauncherComponent
 import com.noapp.container.model.AppConfig
 import com.noapp.container.model.AppMode
@@ -322,12 +321,8 @@ class MainActivity : ComponentActivity() {
             isPlainTap &&
             config.slots.getOrNull(0)?.isConfigured == true
         if (isPlainMainTap) {
-            config.slots.getOrNull(0)?.let { slot ->
-                ActionDispatcher.execute(this, slot)
-                // Recorded so the MIX sheet that opens a line later can leave this item out: it is
-                // the app the user is about to be looking at. See LastLaunch.
-                LastLaunch.remember(this, slot.targetKey)
-            }
+            val primary = config.slots.getOrNull(0)
+            primary?.let { ActionDispatcher.execute(this, it) }
             when (config.mode) {
                 // Always shown for Direct, not just when useAllSlotsInDirectMode frees up the
                 // long-press Configure entry — having it appear in some cases but not others was
@@ -336,7 +331,12 @@ class MainActivity : ComponentActivity() {
                 AppMode.DIRECT -> if (Settings.canDrawOverlays(this)) {
                     startService(Intent(this, GearOverlayService::class.java))
                 }
-                AppMode.MIX -> startActivity(Intent(this, QuickPickActivity::class.java))
+                // The sheet is told which item was just launched, so it can leave exactly that one
+                // out of the list instead of guessing which app is on screen (EXTRA_LAUNCHED_TARGET).
+                AppMode.MIX -> startActivity(
+                    Intent(this, QuickPickActivity::class.java)
+                        .putExtra(EXTRA_LAUNCHED_TARGET, primary?.targetKey)
+                )
                 AppMode.LIST -> Unit
             }
             finishWithoutTransition()

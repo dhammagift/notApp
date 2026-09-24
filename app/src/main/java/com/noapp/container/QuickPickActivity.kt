@@ -14,7 +14,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.noapp.container.data.ConfigStore
-import com.noapp.container.data.LastLaunch
 import com.noapp.container.model.AppMode
 import com.noapp.container.model.AppTheme
 import com.noapp.container.model.ShortcutSlot
@@ -25,6 +24,16 @@ import com.noapp.container.ui.QuickPickSheet
 import com.noapp.container.ui.theme.NoAppTheme
 
 const val EXTRA_SHARED_TEXT = "extra_shared_text"
+
+/**
+ * The slot target the caller launched a moment before opening this sheet (Mix: a plain tap
+ * launches slot 0 and then opens the list on top of it). Only that one item is left out of the
+ * list, because that is the app the user is already looking at; a sheet opened any other way —
+ * the floating button, the gear, a share — carries no extra and filters nothing, since by then
+ * nobody can say what is on screen. See MainActivity.dispatchIfShortcut and
+ * QuickPickPeekOverlayService.
+ */
+const val EXTRA_LAUNCHED_TARGET = "extra_launched_target"
 
 /**
  * A separate, translucent Activity (see Theme.NoApp.Transparent) just for the
@@ -129,13 +138,11 @@ class QuickPickActivity : ComponentActivity() {
 
         sharedText = newSharedText
         theme = config.theme
-        // MIX leaves out only the item that is already open behind this sheet — the app THIS app just
-        // launched: slot 0 after a plain tap (MainActivity launches it a moment before opening this),
-        // or the Quick Settings tile's slot when the list is pulled up over the app the tile started.
-        // Nothing is hidden when that launch is old enough that the user has probably moved on, and a
-        // share-target pick keeps every destination (slot 0 included: a share still has somewhere to
-        // go). See LastLaunch for why this is our own launch and not the real foreground app.
-        val alreadyOpen = if (newSharedText == null) LastLaunch.freshTarget(this) else null
+        // MIX leaves out only the item the caller says it just launched (EXTRA_LAUNCHED_TARGET) —
+        // never a guess about what is on screen. The floating button and the gear pass nothing and
+        // therefore show every item, and a share-target pick keeps every destination too (a share
+        // still has somewhere to go).
+        val alreadyOpen = if (newSharedText == null) intent.getStringExtra(EXTRA_LAUNCHED_TARGET) else null
         slots = if (config.mode == AppMode.MIX && alreadyOpen != null) {
             configuredSlots.filterNot { it.targetKey == alreadyOpen }
         } else {
