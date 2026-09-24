@@ -54,14 +54,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -121,16 +125,15 @@ fun ModeDemo(
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainer
     ) {
-        // Behind everything: a stand-in for the home screen the sheet opens over. Drawn from the
-        // theme rather than read from the real wallpaper — that read is restricted on recent Android
-        // versions, and the point here is only to make it read as "something behind the sheet", not
-        // to show the user their own screen.
-        val dotColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f)
-        val washColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.07f)
+        // Behind everything: a stand-in for the home screen the sheet opens over. It is the app's
+        // own mark — the same vector the launcher icon is built from — scattered across the brand
+        // gradient, rather than the user's real wallpaper: reading that is restricted on recent
+        // Android versions, and this only has to read as "there is a screen back there".
+        val mark = painterResource(R.drawable.ic_not_app_mark)
         Box(
             Modifier
                 .fillMaxSize()
-                .drawBehind { wallpaperPattern(dotColor, washColor) }
+                .drawBehind { brandWallpaper(mark) }
         ) {
             // Says out loud what the picture is, so the panel is never mistaken for live UI.
             Text(
@@ -424,7 +427,7 @@ private fun DemoIcon(slot: ShortcutSlot, number: Int, size: Dp, modifier: Modifi
     val bitmap = remember(number, sizePx) {
         monogramBitmap(
             text = number.toString(),
-            colorHex = ShortcutSlot.PALETTE[(number - 1) % ShortcutSlot.PALETTE.size],
+            colorHex = PLACEHOLDER_COLORS[(number - 1) % PLACEHOLDER_COLORS.size],
             sizePx = sizePx
         ).asImageBitmap()
     }
@@ -432,22 +435,34 @@ private fun DemoIcon(slot: ShortcutSlot, number: Int, size: Dp, modifier: Modifi
 }
 
 /**
- * A soft wash plus a dot grid, standing in for the home screen behind the sheet. Deliberately a
- * pattern of our own: reading the real wallpaper is restricted on recent Android versions, and this
- * only has to read as "there is a screen back there", not as the user's own.
+ * The brand backdrop: the app's own mark tiled diagonally at low alpha over the gradient its icon
+ * uses. No dot grid — at this size the marks are texture enough, and dots on top of them only made
+ * the panel busier than the sheet it is there to set off.
  */
-private fun DrawScope.wallpaperPattern(dot: Color, wash: Color) {
-    drawRect(Brush.verticalGradient(listOf(wash, Color.Transparent)))
-    val step = 26.dp.toPx()
-    val radius = 2.dp.toPx()
-    var y = step / 2f
-    while (y < size.height) {
-        var x = step / 2f
-        while (x < size.width) {
-            drawCircle(dot, radius, Offset(x, y))
-            x += step
+private fun DrawScope.brandWallpaper(mark: Painter) {
+    drawRect(
+        Brush.linearGradient(
+            colors = BRAND_GRADIENT,
+            start = Offset(0f, 0f),
+            end = Offset(size.width, size.height)
+        )
+    )
+    val tile = size.minDimension * 0.42f
+    val step = tile * 1.5f
+    rotate(degrees = -18f) {
+        var y = -step
+        while (y < size.height + step) {
+            var x = -step
+            while (x < size.width + step) {
+                translate(left = x, top = y) {
+                    with(mark) {
+                        draw(size = Size(tile, tile), alpha = MARK_ALPHA)
+                    }
+                }
+                x += step
+            }
+            y += step
         }
-        y += step
     }
 }
 
@@ -470,6 +485,26 @@ private const val COLLAPSE_ANIM_MS = 220
 private const val PLACEHOLDER_ROWS = 5
 private const val SHORTCUT_MENU_ROWS = 4
 private const val SCRIM_ALPHA = 0.32f
+
+/** Sampled from the launcher icon: the same blue-to-violet its own tile is painted with. */
+private val BRAND_GRADIENT = listOf(
+    Color(0xFF062275),
+    Color(0xFF0B6DCE),
+    Color(0xFF7B5CE0),
+    Color(0xFFA175F0)
+)
+private const val MARK_ALPHA = 0.16f
+
+/**
+ * Numbered placeholders skip the palette's blues and lilac on purpose: the first of them is drawn
+ * over a blue-to-violet backdrop, and the palette's first colour disappeared into it.
+ */
+private val PLACEHOLDER_COLORS = listOf(
+    Color(0xFFC0574C),
+    Color(0xFFD9A441),
+    Color(0xFFC97A3D),
+    Color(0xFF8B8D91)
+)
 
 /** The real menu is a phone-sized card, not a full-width sheet — capped so a tablet gets that too. */
 private val MENU_MAX_WIDTH = 300.dp
