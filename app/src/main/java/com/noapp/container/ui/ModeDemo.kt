@@ -225,7 +225,7 @@ private fun DemoSheet(
     var collapsed by remember { mutableStateOf(false) }
     val settledPx by animateFloatAsState(
         targetValue = if (collapsed) {
-            (sheetHeightPx - handleStripPx).coerceAtLeast(0f)
+            (sheetHeightPx - handleStripPx).toFloat().coerceAtLeast(0f)
         } else {
             0f
         },
