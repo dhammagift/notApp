@@ -233,6 +233,9 @@ private fun ModePickerDialog(
                                         buildAnnotatedString {
                                             append(stringResource(R.string.config_mode_direct_desc))
                                             append(" ")
+                                            // Only the word "Settings" is coloured; the phrase it belongs
+                                            // to is bold, and the parenthetical tail is ordinary text —
+                                            // the emphasis marks the fact, not the whole paragraph.
                                             withStyle(
                                                 SpanStyle(
                                                     fontWeight = FontWeight.Bold,
@@ -241,6 +244,16 @@ private fun ModePickerDialog(
                                             ) {
                                                 append(stringResource(R.string.config_mode_direct_desc_settings))
                                             }
+                                            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                                                append(" ")
+                                                append(
+                                                    stringResource(
+                                                        R.string.config_mode_direct_desc_settings_suffix
+                                                    )
+                                                )
+                                            }
+                                            append(" ")
+                                            append(stringResource(R.string.config_mode_direct_desc_tail))
                                         }
                                     } else {
                                         AnnotatedString(stringResource(candidate.descriptionRes()))
@@ -487,7 +500,11 @@ fun ConfigScreen(
                                 // handle — is the same grey at the same strength, so the row reads as one
                                 // set; only an ACTIVE star or rocket stands out, in hue and in brightness
                                 // (the filled star drawable against the outlined one does the rest).
-                                val inactiveTint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                // 0.38 is Material's own disabled-content alpha: these are affordances
+                                // that must not read as buttons, especially next to a genuinely active
+                                // star or rocket (owner: "сейчас они выглядят как просто какие-то активные
+                                // кнопки… нужно ещё более прозрачные").
+                                val inactiveTint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                                 Icon(
                                     painterResource(
                                         if (index == 0) R.drawable.ic_marker_star

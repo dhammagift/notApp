@@ -55,14 +55,12 @@
     <string name="toast_pin_unsupported">Ваш лаунчер не поддерживает закрепление ярлыков</string>
     <string name="toast_launch_failed">Не удалось запустить \"%1$s\": %2$s</string>
 
-    <!-- Общее -->
     <string name="common_cancel">Отмена</string>
     <string name="common_save">Сохранить</string>
     <string name="common_close">Закрыть</string>
     <string name="common_undo">Отменить</string>
     <string name="common_item_n">Ярлык %1$d</string>
 
-    <!-- Варианты иконки приложения (Настройки > Иконка приложения) -->
     <string name="icon_variant_default">Обычная</string>
     <string name="icon_variant_material">Материал</string>
     <string name="icon_variant_bolt">Молния</string>
@@ -72,10 +70,8 @@
     <string name="icon_variant_sankha_flat">Раковина</string>
     <string name="icon_variant_sankha_3d">Раковина 3D</string>
 
-    <!-- Ярлык в системном меню (long-press), не Compose -->
     <string name="shortcut_configure_label">Настройки</string>
 
-    <!-- Главный список -->
     <string name="config_mode_list">☰ Список</string>
     <string name="config_mode_direct">▶ Прямой</string>
     <string name="config_mode_mix">◫ Микс</string>
@@ -85,9 +81,11 @@
     <string name="config_mode_dialog_title">Выбор режима</string>
     <string name="config_mode_list_desc">Я открываю список ярлыков. А если долго удержите мою иконку — сразу покажу первые 4 ярлыка как шорткаты.</string>
     <string name="config_mode_direct_desc">Я сразу открываю первый ярлык.</string>
-    <!-- Показывается жирным и цветом-акцентом сразу под строкой выше: в режиме «Прямой» это то, что
-         замечают последним — настройки переехали в долгое нажатие. -->
-    <string name="config_mode_direct_desc_settings">Настройки — по долгому нажатию: удержите иконку и выберите «Настройки» (или включите «Использовать все слоты», чтобы отдать этот слот ярлыку, а настройки открывать шестерёнкой).</string>
+    <!-- Слово показывается жирным И цветом-акцентом; следующий за ним суффикс — только жирным, хвост —
+         обычным текстом. Разделено так, чтобы акцент был точным в любом языке. -->
+    <string name="config_mode_direct_desc_settings">Настройки</string>
+    <string name="config_mode_direct_desc_settings_suffix">— по долгому нажатию на мою иконку</string>
+    <string name="config_mode_direct_desc_tail">(или включите «Использовать все слоты», чтобы отдать этот слот ярлыку, а настройки открывать шестерёнкой).</string>
     <string name="config_mode_mix_desc">Я сразу открываю первый ярлык и одновременно показываю список остальных. Долгим нажатием покажу первые 4 ярлыка как шорткаты.</string>
     <string name="config_fill">Заполнить</string>
     <string name="config_settings_desc">Настройки</string>
@@ -112,7 +110,6 @@
     <string name="config_tile_marker_on">Этот пункт запускает плитка в шторке.</string>
     <string name="config_tile_marker_off">Плитка снова открывает список.</string>
 
-    <!-- Экран редактирования ярлыка -->
     <string name="slot_edit_title_main">Редактирование главного действия</string>
     <string name="slot_edit_title_item">Редактирование ярлыка %1$d</string>
     <string name="slot_edit_cancel_desc">Отмена</string>
@@ -131,11 +128,9 @@
     <string name="slot_edit_icon_random">Случайно</string>
     <string name="slot_edit_color_label">Цвет</string>
 
-    <!-- Диалог выбора активности -->
     <string name="activity_picker_title">Выбор активности</string>
     <string name="activity_picker_empty">Экспортируемые активности не найдены</string>
 
-    <!-- Диалог выбора приложения -->
     <string name="app_picker_title_fill">Заполнить слоты приложениями</string>
     <string name="app_picker_title_choose">Выбрать приложение</string>
     <string name="app_picker_search">Поиск приложений</string>
@@ -146,7 +141,6 @@
         <item quantity="other">Заполнить %1$d слота</item>
     </plurals>
 
-    <!-- QuickPick -->
     <string name="quick_pick_configure_desc">Настройки</string>
     <string name="quick_pick_send_to">Отправить \"%1$s\" в:</string>
     <string name="quick_pick_reopen_desc">Показать список</string>

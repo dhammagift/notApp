@@ -1,7 +1,6 @@
 <resources>
     <string name="app_name">Not App</string>
 
-    <!-- Settings screen — localized as a representative first pass, not full app coverage yet -->
     <string name="settings_title">Settings</string>
     <string name="settings_app_icon">App icon</string>
     <string name="settings_app_icon_hint">Some launchers take a moment (or a trip back to the home screen) to show the new icon.</string>
@@ -58,14 +57,12 @@
     <string name="toast_pin_unsupported">Your launcher doesn\'t support pinning shortcuts</string>
     <string name="toast_launch_failed">Couldn\'t launch \"%1$s\": %2$s</string>
 
-    <!-- Common, shared across screens -->
     <string name="common_cancel">Cancel</string>
     <string name="common_save">Save</string>
     <string name="common_close">Close</string>
     <string name="common_undo">Undo</string>
     <string name="common_item_n">Item %1$d</string>
 
-    <!-- App icon variant names (Settings > App icon) -->
     <string name="icon_variant_default">Default</string>
     <string name="icon_variant_material">Material</string>
     <string name="icon_variant_bolt">Bolt</string>
@@ -75,10 +72,8 @@
     <string name="icon_variant_sankha_flat">Shell</string>
     <string name="icon_variant_sankha_3d">Shell 3D</string>
 
-    <!-- OS shortcut labels (long-press menu), not Compose — plain string lookup -->
     <string name="shortcut_configure_label">Configure</string>
 
-    <!-- Main list (ConfigScreen) -->
     <string name="config_mode_list">☰ List</string>
     <string name="config_mode_direct">▶ Direct</string>
     <string name="config_mode_mix">◫ Mix</string>
@@ -88,9 +83,11 @@
     <string name="config_mode_dialog_title">Choose mode</string>
     <string name="config_mode_list_desc">I open the shortcut list. Long-press my icon and I\'ll show you the first 4 items as shortcuts right away.</string>
     <string name="config_mode_direct_desc">I launch your first item right away.</string>
-    <!-- Rendered bold and in the alert colour right under the line above: in Direct, this is the one
-         fact users miss — that Settings moved into the long-press menu. -->
-    <string name="config_mode_direct_desc_settings">Settings are in the long-press menu: hold my icon and pick Configure — or turn on \"Use all shortcut slots\" to give that slot to a real item and open Settings from the gear instead.</string>
+    <!-- The word rendered bold AND in the alert colour; the suffix right after it is bold only, and the
+         tail is ordinary text. Split this way so the emphasis can be exact in every language. -->
+    <string name="config_mode_direct_desc_settings">Settings</string>
+    <string name="config_mode_direct_desc_settings_suffix">are behind a long-press on my icon</string>
+    <string name="config_mode_direct_desc_tail">(or turn on \"Use all shortcut slots\" to give that slot to a real item and open Settings from the gear instead).</string>
     <string name="config_mode_mix_desc">I launch your first item right away and also show the list of the rest. Long-press my icon and I\'ll show the first 4 items as shortcuts.</string>
     <string name="config_fill">Fill</string>
     <string name="config_settings_desc">Settings</string>
@@ -115,7 +112,6 @@
     <string name="config_tile_marker_on">The Quick Settings tile launches this one.</string>
     <string name="config_tile_marker_off">The Quick Settings tile opens the list again.</string>
 
-    <!-- Slot edit screen -->
     <string name="slot_edit_title_main">Edit Main action</string>
     <string name="slot_edit_title_item">Edit Item %1$d</string>
     <string name="slot_edit_cancel_desc">Cancel</string>
@@ -134,11 +130,9 @@
     <string name="slot_edit_icon_random">Random</string>
     <string name="slot_edit_color_label">Color</string>
 
-    <!-- Activity picker dialog -->
     <string name="activity_picker_title">Choose activity</string>
     <string name="activity_picker_empty">No exported activities found</string>
 
-    <!-- App picker dialog -->
     <string name="app_picker_title_fill">Fill slots from apps</string>
     <string name="app_picker_title_choose">Choose app</string>
     <string name="app_picker_search">Search apps</string>
@@ -147,7 +141,6 @@
         <item quantity="other">Fill %1$d slots</item>
     </plurals>
 
-    <!-- QuickPick sheet -->
     <string name="quick_pick_configure_desc">Configure</string>
     <string name="quick_pick_send_to">Send \"%1$s\" to:</string>
     <string name="quick_pick_reopen_desc">Show list</string>
