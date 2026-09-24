@@ -2,6 +2,7 @@ package com.noapp.container.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,12 +22,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -37,22 +43,27 @@ import com.noapp.container.model.AppMode
 import com.noapp.container.model.ShortcutSlot
 
 /**
- * One picture of how the mode that is selected right now behaves, shown under the picker's three
- * paragraphs — the cards themselves stay text only, so the example reads as a footnote to them.
+ * The example at the foot of the mode picker: how the mode that is selected right now behaves,
+ * drawn from the user's real slots. The cards above stay text only, so this reads as their picture.
  *
- * Only one mode is ever drawn, and that is the point: this dialog closes on the tap that selects a
- * mode, so there is no way to look at another mode's example without choosing it.
+ * It shows the mode that is on right now simply because it can only show that one — the dialog
+ * closes on the tap that selects a mode, so there is no way to preview another without choosing it.
  *
- * The list here is the real one, not a diagram of one: the same rows the sheet builds (a [ListItem]
- * with the slot's own icon and label), under the same drag handle, and it really scrolls when the
- * config holds more items than fit. That is also why it is capped by [LIST_HEIGHT] rather than
- * growing with the config: uncapped, a long list would push the three descriptions off the screen.
- * With nothing configured the rows are numbered placeholders, which is what an empty config looks
- * like. Nothing is ever launched to draw any of it.
+ * The list is the real one rather than a diagram of one: the same rows the sheet builds (a
+ * [ListItem] with the slot's own icon and label), under the same drag handle, in a real [LazyColumn]
+ * that scrolls once the config holds more items than fit — which is also why it is capped by
+ * [LIST_HEIGHT] instead of growing with the config: uncapped, a long list would push the three
+ * descriptions off the dialog. With nothing configured the rows are numbered placeholders, which is
+ * what an empty config looks like.
+ *
+ * Holding the icon opens a shortcut menu. The real one is drawn by the launcher and cannot be
+ * embedded in an app, so this is our own drawing of the same four shortcuts, and only here in the
+ * picker — the app itself must never pretend to own that menu.
  */
 @Composable
 fun ModeDemo(mode: AppMode, slots: List<ShortcutSlot>, modifier: Modifier = Modifier) {
     val items = if (slots.isEmpty()) List(PLACEHOLDER_ROWS) { ShortcutSlot(id = it) } else slots
+    var menuShown by remember { mutableStateOf(false) }
     Surface(
         modifier = modifier.fillMaxWidth().height(DEMO_HEIGHT),
         shape = MaterialTheme.shapes.large,
@@ -62,39 +73,58 @@ fun ModeDemo(mode: AppMode, slots: List<ShortcutSlot>, modifier: Modifier = Modi
         // panel rather than as loose rows.
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
-        when (mode) {
-            AppMode.LIST -> DemoSheet(
-                items = items,
-                startNumber = 1,
-                listHeight = LIST_HEIGHT,
-                modifier = Modifier.fillMaxSize()
-            )
-
-            AppMode.DIRECT -> Column(
-                Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                DemoIcon(items[0], 1, HERO_ICON)
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    stringResource(R.string.mode_demo_direct_opens, labelOf(items[0], 1)),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+        Box(Modifier.fillMaxSize()) {
+            when (mode) {
+                AppMode.LIST -> DemoSheet(
+                    items = items,
+                    startNumber = 1,
+                    listHeight = LIST_HEIGHT,
+                    modifier = Modifier.fillMaxSize()
                 )
-            }
 
-            // The same hero icon, with the real list of the rest starting halfway down over it:
-            // the mode's own "one item, then everything else" shape.
-            AppMode.MIX -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-                DemoIcon(items[0], 1, HERO_ICON, modifier = Modifier.padding(top = DEMO_PADDING))
-                DemoSheet(
-                    items = items.drop(1),
-                    startNumber = 2,
-                    listHeight = MIX_LIST_HEIGHT,
-                    modifier = Modifier
-                        .padding(top = DEMO_PADDING + HERO_ICON / 2, start = 24.dp, end = 24.dp)
-                        .height(MIX_SHEET_HEIGHT)
+                AppMode.DIRECT -> Column(
+                    Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    HeroIcon(items[0], 1) { menuShown = true }
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        stringResource(R.string.mode_demo_direct_opens, labelOf(items[0], 1)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    DemoHint()
+                }
+
+                // The same hero icon, with the real list of the rest starting halfway down over it:
+                // the mode's own "one item, then everything else" shape.
+                AppMode.MIX -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                    DemoHint(Modifier.padding(top = 14.dp))
+                    HeroIcon(
+                        items[0],
+                        1,
+                        modifier = Modifier.padding(top = HINT_HEIGHT + 4.dp)
+                    ) { menuShown = true }
+                    DemoSheet(
+                        items = items.drop(1),
+                        startNumber = 2,
+                        listHeight = MIX_LIST_HEIGHT,
+                        modifier = Modifier
+                            .padding(
+                                top = HINT_HEIGHT + 4.dp + HERO_ICON / 2,
+                                start = 24.dp,
+                                end = 24.dp
+                            )
+                            .height(MIX_SHEET_HEIGHT)
+                    )
+                }
+            }
+            if (menuShown) {
+                ShortcutMenu(
+                    items = items.take(SHORTCUT_MENU_ROWS),
+                    onDismiss = { menuShown = false },
+                    modifier = Modifier.fillMaxSize().padding(10.dp)
                 )
             }
         }
@@ -139,6 +169,61 @@ private fun DemoSheet(
     }
 }
 
+@Composable
+private fun HeroIcon(
+    slot: ShortcutSlot,
+    number: Int,
+    modifier: Modifier = Modifier,
+    onLongPress: () -> Unit
+) {
+    Box(
+        modifier.pointerInput(slot) {
+            detectTapGestures(onLongPress = { onLongPress() }, onTap = { onLongPress() })
+        }
+    ) {
+        DemoIcon(slot, number, HERO_ICON)
+    }
+}
+
+/** Our own drawing of the four shortcuts the launcher's long-press menu would list. */
+@Composable
+private fun ShortcutMenu(items: List<ShortcutSlot>, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.pointerInput(Unit) { detectTapGestures { onDismiss() } },
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shadowElevation = 8.dp
+    ) {
+        Column(Modifier.padding(vertical = 10.dp)) {
+            Text(
+                stringResource(R.string.mode_demo_shortcuts_title),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 16.dp, bottom = 6.dp)
+            )
+            items.forEachIndexed { index, slot ->
+                ListItem(
+                    headlineContent = {
+                        Text(labelOf(slot, index + 1), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    },
+                    leadingContent = { DemoIcon(slot, index + 1, 32.dp) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DemoHint(modifier: Modifier = Modifier) {
+    Text(
+        stringResource(R.string.mode_demo_long_press),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        modifier = modifier.fillMaxWidth()
+    )
+}
+
 /** A configured slot shows its real icon; an empty one shows its number, as the list itself does. */
 @Composable
 private fun DemoIcon(slot: ShortcutSlot, number: Int, size: Dp, modifier: Modifier = Modifier) {
@@ -162,10 +247,12 @@ private fun labelOf(slot: ShortcutSlot, number: Int): String =
     slot.label.ifBlank { stringResource(R.string.common_item_n, number) }
 
 /** Enough for the panel; the rows inside keep the sheet's real single-line height. */
-private val DEMO_HEIGHT = 208.dp
+private val DEMO_HEIGHT = 280.dp
 private val DEMO_PADDING = 8.dp
 private val HERO_ICON = 104.dp
-private val LIST_HEIGHT = 168.dp
+private val HINT_HEIGHT = 16.dp
+private val LIST_HEIGHT = 224.dp
 private val MIX_LIST_HEIGHT = 112.dp
 private val MIX_SHEET_HEIGHT = 142.dp
 private const val PLACEHOLDER_ROWS = 4
+private const val SHORTCUT_MENU_ROWS = 4

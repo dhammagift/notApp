@@ -213,7 +213,8 @@ private fun ModePickerDialog(
                     }
                 )
                 Column(
-                    Modifier.padding(16.dp).verticalScroll(rememberScrollState()),
+                    Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 8.dp)
+                        .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     AppMode.entries.forEach { candidate ->
@@ -273,11 +274,15 @@ private fun ModePickerDialog(
                             }
                         }
                     }
-                    // One example, of the mode that is on right now, under all three paragraphs:
-                    // the copies above stay short, and this is the picture of their case.
-                    Spacer(Modifier.padding(top = 4.dp))
-                    ModeDemo(currentMode, slots)
                 }
+                // Pinned to the bottom of the dialog rather than trailing the cards: it is the
+                // picture of the mode that is on right now, and being outside the scrolling part is
+                // what keeps it from ever covering the three descriptions.
+                ModeDemo(
+                    mode = currentMode,
+                    slots = slots,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                )
             }
         }
     }
