@@ -117,6 +117,7 @@ fun ModeDemo(
     useAllSlotsInDirectMode: Boolean,
     peekBubbleSize: Float,
     peekBubbleAlpha: Float,
+    narrowSheet: Boolean,
     onShowShortcuts: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -166,7 +167,10 @@ fun ModeDemo(
                             recentApps = recentApps,
                             collapsed = collapsed,
                             onCollapsedChange = { collapsed = it },
-                            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .widthIn(max = if (narrowSheet) SHEET_MAX_WIDTH else Dp.Unspecified)
+                                .fillMaxWidth()
                         )
 
                         AppMode.DIRECT -> Column(
@@ -198,6 +202,7 @@ fun ModeDemo(
                                 collapsed = collapsed,
                                 onCollapsedChange = { collapsed = it },
                                 modifier = Modifier
+                                    .widthIn(max = if (narrowSheet) SHEET_MAX_WIDTH else Dp.Unspecified)
                                     .fillMaxWidth()
                                     .padding(horizontal = MIX_SHEET_INSET)
                                     // Everything the panel has above the icon block: a fixed cap here
@@ -378,6 +383,7 @@ private fun BoxScope.DemoPeekBubble(
 ) {
     val density = LocalDensity.current
     var drag by remember { mutableStateOf(Offset.Zero) }
+    var dragging by remember { mutableStateOf(false) }
     val sizePx = with(density) { size.toPx() }
     val panelWidthPx = with(density) { panelWidth.toPx() }
     val panelHeightPx = with(density) { panelHeight.toPx() }
@@ -393,26 +399,33 @@ private fun BoxScope.DemoPeekBubble(
     val snapPx = with(density) { TRASH_SNAP.toPx() }
     val overTrash = abs(centerX - trashCenterX) < snapPx && abs(centerY - trashCenterY) < snapPx
 
-    Box(
-        Modifier
-            .align(Alignment.BottomCenter)
-            .padding(bottom = TRASH_BOTTOM_MARGIN)
-            .size(TRASH_SIZE)
-            .background(if (overTrash) TRASH_ACTIVE else TRASH_IDLE, CircleShape)
-            .clickable(onClick = onRemove),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            painterResource(R.drawable.ic_close_bubble),
-            contentDescription = stringResource(R.string.settings_peek_bubble_returns),
-            tint = Color.White,
-            modifier = Modifier.size(26.dp)
-        )
+    // Shown only while the button is being dragged, exactly like the app's ✕ target — it is not a
+    // permanent part of the demo.
+    if (dragging) {
+        Box(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = TRASH_BOTTOM_MARGIN)
+                .size(TRASH_SIZE)
+                .background(if (overTrash) TRASH_ACTIVE else TRASH_IDLE, CircleShape)
+                .pointerInput(Unit) { detectTapGestures { onRemove() } },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painterResource(R.drawable.ic_close_bubble),
+                contentDescription = stringResource(R.string.settings_peek_bubble_returns),
+                tint = Color.White,
+                modifier = Modifier.size(26.dp)
+            )
+        }
     }
 
     Box(
         Modifier
-            .align(Alignment.BottomStart)
+            // TopStart, because the offsets below are absolute inside the panel: aligning to the
+            // bottom as well pushed the button a whole panel-height off the bottom edge, which is why
+            // it was invisible while its ✕ was still on screen.
+            .align(Alignment.TopStart)
             .offset { IntOffset((restX + drag.x).roundToInt(), (restY + drag.y).roundToInt()) }
             .size(size)
             .graphicsLayer { this.alpha = alpha }
@@ -420,8 +433,12 @@ private fun BoxScope.DemoPeekBubble(
             .pointerInput(Unit) { detectTapGestures { onOpen() } }
             .pointerInput(sizePx) {
                 detectDragGestures(
-                    onDragEnd = { if (overTrash) onRemove() },
-                    onDragCancel = {}, 
+                    onDragStart = { dragging = true },
+                    onDragEnd = {
+                        dragging = false
+                        if (overTrash) onRemove()
+                    },
+                    onDragCancel = { dragging = false },
                     onDrag = { change, delta ->
                         change.consume()
                         drag = clampInside(drag + delta, restX, restY, sizePx, panelWidthPx, panelHeightPx)
@@ -719,6 +736,9 @@ private val MIX_SHEET_MIN_HEIGHT = 120.dp
 
 /** The most the sheet grows to before its list scrolls instead. */
 private val SHEET_MAX_HEIGHT = 460.dp
+
+/** A sheet is a phone-shaped thing: on a landscape screen it keeps that width, centred. */
+private val SHEET_MAX_WIDTH = 420.dp
 
 /** Straight from QuickPickPeekOverlayService: the same button size, margin, colour and ✕ target. */
 private val PEEK_BUBBLE = 48.dp

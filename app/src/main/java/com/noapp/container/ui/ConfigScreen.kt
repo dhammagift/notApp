@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -91,7 +90,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -113,8 +111,6 @@ private const val MAX_FILL_SELECTION = 20
 /** Never taller than this, however long the descriptions get: the example below needs room too. */
 private val CARDS_MAX_HEIGHT = 340.dp
 
-/** The example's own width cap: phone-shaped on any screen, since it pictures a bottom sheet. */
-private val DEMO_MAX_WIDTH = 460.dp
 
 private fun SlotType.icon(): ImageVector = when (this) {
     SlotType.APP -> AndroidIcon
@@ -304,14 +300,14 @@ private fun ModePickerDialog(
                         useAllSlotsInDirectMode = useAllSlotsInDirectMode,
                         peekBubbleSize = peekBubbleSize,
                         peekBubbleAlpha = peekBubbleAlpha,
+                        narrowSheet = wideLandscape,
                         onShowShortcuts = { shortcutsShown = true },
                         modifier = Modifier
                             .weight(1f)
-                            // Centred and capped in landscape: a bottom sheet is a phone-wide thing,
-                            // and on a tablet held sideways a full-width panel stops looking like the
-                            // sheet at all. Portrait keeps the full width, phone or tablet.
+                            // The panel is never narrowed: it stands for the screen, and a screen is
+                            // the whole width in either orientation. Only the sheet inside it gets a
+                            // phone's width when the screen is a landscape one.
                             .align(Alignment.CenterHorizontally)
-                            .widthIn(max = if (wideLandscape) DEMO_MAX_WIDTH else Dp.Unspecified)
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 12.dp)
                     )
