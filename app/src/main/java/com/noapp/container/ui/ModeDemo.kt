@@ -23,21 +23,29 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -57,10 +65,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.noapp.container.R
+import com.noapp.container.icon.AppIcon
 import com.noapp.container.icon.SlotIcon
 import com.noapp.container.icon.monogramBitmap
 import com.noapp.container.model.AppMode
 import com.noapp.container.model.ShortcutSlot
+import com.noapp.container.recents.RecentApp
+import com.noapp.container.recents.RecentApps
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 /**
@@ -82,10 +95,22 @@ import kotlin.math.roundToInt
 fun ModeDemo(
     mode: AppMode,
     slots: List<ShortcutSlot>,
+    showRecentApps: Boolean,
     onShowShortcuts: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val items = if (slots.isEmpty()) List(PLACEHOLDER_ROWS) { ShortcutSlot(id = it) } else slots
+    val context = LocalContext.current
+    var recentApps by remember { mutableStateOf<List<RecentApp>>(emptyList()) }
+    // Only when the user turned the strip on: the sheet shows it then, so the example has to as
+    // well, or it would be describing a different sheet than the one that opens.
+    LaunchedEffect(showRecentApps) {
+        recentApps = if (showRecentApps) {
+            withContext(Dispatchers.IO) { RecentApps.query(context) }
+        } else {
+            emptyList()
+        }
+    }
     Surface(
         modifier = modifier,
         shape = MaterialTheme.shapes.large,
@@ -95,39 +120,49 @@ fun ModeDemo(
         // panel rather than as loose rows.
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
-        when (mode) {
-            AppMode.LIST -> DemoSheet(items, startNumber = 1, modifier = Modifier.fillMaxSize())
-
-            AppMode.DIRECT -> Column(
-                Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                HeroIcon(items[0], 1, onShowShortcuts)
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    stringResource(R.string.mode_demo_direct_opens, labelOf(items[0], 1)),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+        // Keyed on the mode: switching modes must show the new example expanded, not the state the
+        // previous one was left in (a sheet collapsed to its handle, say).
+        key(mode) {
+            when (mode) {
+                AppMode.LIST -> DemoSheet(
+                    items = items,
+                    startNumber = 1,
+                    recentApps = recentApps,
+                    modifier = Modifier.fillMaxSize()
                 )
-                DemoHint()
-            }
 
-            // The same hero icon, with the real list of the rest starting at its midline: the mode's
-            // own "one item, then everything else" shape. A column rather than fixed offsets, so it
-            // stays right at any panel height.
-            AppMode.MIX -> Column(Modifier.fillMaxSize()) {
-                DemoHint(Modifier.padding(top = 10.dp))
-                Box(Modifier.fillMaxWidth().weight(1f)) {
-                    HeroIcon(items[0], 1, onShowShortcuts, Modifier.align(Alignment.TopCenter))
-                    DemoSheet(
-                        items = items.drop(1),
-                        startNumber = 2,
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(top = HERO_ICON / 2, start = 24.dp, end = 24.dp)
-                            .fillMaxHeight()
+                AppMode.DIRECT -> Column(
+                    Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    HeroIcon(items[0], 1, onShowShortcuts)
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        stringResource(R.string.mode_demo_direct_opens, labelOf(items[0], 1)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    DemoHint()
+                }
+
+                // The same hero icon, with the real list of the rest starting at its midline: the mode's
+                // own "one item, then everything else" shape. A column rather than fixed offsets, so it
+                // stays right at any panel height.
+                AppMode.MIX -> Column(Modifier.fillMaxSize()) {
+                    DemoHint(Modifier.padding(top = 10.dp))
+                    Box(Modifier.fillMaxWidth().weight(1f)) {
+                        HeroIcon(items[0], 1, onShowShortcuts, Modifier.align(Alignment.TopCenter))
+                        DemoSheet(
+                            items = items.drop(1),
+                            startNumber = 2,
+                            recentApps = recentApps,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = HERO_ICON / 2, start = 24.dp, end = 24.dp)
+                                .fillMaxHeight()
+                        )
+                    }
                 }
             }
         }
@@ -140,7 +175,12 @@ fun ModeDemo(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DemoSheet(items: List<ShortcutSlot>, startNumber: Int, modifier: Modifier = Modifier) {
+private fun DemoSheet(
+    items: List<ShortcutSlot>,
+    startNumber: Int,
+    recentApps: List<RecentApp>,
+    modifier: Modifier = Modifier
+) {
     val density = LocalDensity.current
     val collapseThresholdPx = with(density) { COLLAPSE_THRESHOLD.toPx() }
     var sheetHeightPx by remember { mutableIntStateOf(0) }
@@ -188,6 +228,34 @@ private fun DemoSheet(items: List<ShortcutSlot>, startNumber: Int, modifier: Mod
                 BottomSheetDefaults.DragHandle()
             }
             if (!collapsed) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (recentApps.isNotEmpty()) {
+                        LazyRow(
+                            modifier = Modifier.weight(1f),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+                        ) {
+                            items(recentApps, key = { it.packageName }) { app ->
+                                AppIcon(packageName = app.packageName, size = 32.dp)
+                            }
+                        }
+                        VerticalDivider(Modifier.height(24.dp).padding(horizontal = 4.dp))
+                    } else {
+                        Spacer(Modifier.weight(1f))
+                    }
+                    // The sheet's own Configure gear, drawn but inert: this is a picture of the
+                    // sheet, and the screen around it is already where configuration happens.
+                    Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                if (recentApps.isNotEmpty()) HorizontalDivider()
                 LazyColumn(Modifier.weight(1f)) {
                     itemsIndexed(items, key = { index, _ -> index }) { index, slot ->
                         // Same row as the real sheet: the slot's icon and its label, nothing added.
@@ -227,8 +295,8 @@ fun ShortcutMenuOverlay(appName: String, slots: List<ShortcutSlot>, onDismiss: (
             // Taps on the card itself are swallowed, so only an outside tap dismisses it — the same
             // as the menu it imitates.
             modifier = Modifier
+                .widthIn(max = MENU_MAX_WIDTH)
                 .fillMaxWidth()
-                .padding(horizontal = 28.dp)
                 .pointerInput(Unit) { detectTapGestures { } },
             shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -327,3 +395,6 @@ private const val COLLAPSE_ANIM_MS = 220
 private const val PLACEHOLDER_ROWS = 4
 private const val SHORTCUT_MENU_ROWS = 4
 private const val SCRIM_ALPHA = 0.32f
+
+/** The real menu is a phone-sized card, not a full-width sheet — capped so a tablet gets that too. */
+private val MENU_MAX_WIDTH = 300.dp

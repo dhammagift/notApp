@@ -149,6 +149,7 @@ private fun AppMode.descriptionRes(): Int = when (this) {
 private fun ModePickerDialog(
     currentMode: AppMode,
     showPeekBubble: Boolean,
+    showRecentApps: Boolean,
     slots: List<ShortcutSlot>,
     onModeSelected: (AppMode) -> Unit,
     onDismiss: () -> Unit
@@ -287,6 +288,7 @@ private fun ModePickerDialog(
                     ModeDemo(
                         mode = currentMode,
                         slots = slots,
+                        showRecentApps = showRecentApps,
                         onShowShortcuts = { shortcutsShown = true },
                         modifier = Modifier
                             .weight(1f)
@@ -311,6 +313,7 @@ fun ConfigScreen(
     mode: AppMode,
     slots: List<ShortcutSlot>,
     showPeekBubble: Boolean,
+    showRecentApps: Boolean,
     hint: UiHint?,
     onHintShown: (UiHint) -> Unit,
     onEditSlot: (Int) -> Unit,
@@ -385,11 +388,12 @@ fun ConfigScreen(
                         ModePickerDialog(
                             currentMode = mode,
                             showPeekBubble = showPeekBubble,
+                            showRecentApps = showRecentApps,
                             slots = slots,
-                            onModeSelected = {
-                                onModeChanged(it)
-                                modeDialogVisible = false
-                            },
+                            // The dialog deliberately stays open on a choice: the example at the
+                            // bottom is the whole point of it, and it can only show a mode once that
+                            // mode IS the current one. Closing is the ✕ or Back, nothing else.
+                            onModeSelected = onModeChanged,
                             onDismiss = { modeDialogVisible = false }
                         )
                     }
