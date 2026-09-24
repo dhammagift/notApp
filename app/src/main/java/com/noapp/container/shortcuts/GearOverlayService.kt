@@ -22,7 +22,13 @@ import androidx.core.graphics.drawable.toBitmap
 import com.noapp.container.MainActivity
 import com.noapp.container.R
 
-private const val DISPLAY_MS = 2500L
+// How long the gear stays before it hides itself. It used to flash for 2.5 seconds, which in
+// Direct mode is the same as not showing it at all: a plain tap launches the first item and never
+// shows this app's own screen, so the gear IS the settings entry, and one that is gone before the
+// user looks for it leaves the long-press Configure shortcut as the only way in (owner,
+// 2026-09-24: "обязательно всегда показывать шестерёнку вверху экрана"). Two minutes is a
+// backstop, not the intended lifetime: tapping it opens Settings and takes it away immediately.
+private const val AUTO_HIDE_MS = 2 * 60 * 1000L
 // Matches the Settings gear glyph's actual on-screen size (Material's default 24dp Icon,
 // as seen in ConfigScreen's own Settings button) — the 40dp box this used to render at
 // filled that whole area edge-to-edge once it became a solid vector glyph instead of a
@@ -37,13 +43,14 @@ private const val TOP_MARGIN_DP = 12
 private const val END_MARGIN_DP = 12
 
 /**
- * Flashes a tappable Configure gear over whatever Direct mode just launched — dispatch itself
- * stays instant (see MainActivity's dispatchIfShortcut), this only adds the overlay on top,
- * auto-dismissing. Shown on every Direct-mode dispatch, not just when
- * useAllSlotsInDirectMode has removed the long-press Configure entry — see dispatchIfShortcut's
- * own comment for why unconditional. Never started unless Settings.canDrawOverlays() is already
- * true; the mode picker and the "Use all shortcut slots" toggle both actively ask for that
- * permission (see ConfigScreen's GearOverlayPermissionDialog use and SettingsScreen).
+ * Puts a tappable Configure gear over whatever Direct mode just launched, and leaves it there until
+ * it is tapped — dispatch itself stays instant (see MainActivity's dispatchIfShortcut), this only
+ * adds the overlay on top. Shown on every Direct-mode dispatch, not just when
+ * useAllSlotsInDirectMode has removed the long-press Configure entry: in Direct the app's own screen
+ * never appears on a plain tap, so this gear is where Settings live, and a short flash is the same
+ * as no gear at all. Never started unless Settings.canDrawOverlays() is already true; the mode
+ * picker and the "Use all shortcut slots" toggle both actively ask for that permission (see
+ * ConfigScreen's GearOverlayPermissionDialog use and SettingsScreen).
  */
 class GearOverlayService : Service() {
     private var windowManager: WindowManager? = null
@@ -64,7 +71,7 @@ class GearOverlayService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (overlayView != null) {
             handler.removeCallbacks(autoRemove)
-            handler.postDelayed(autoRemove, DISPLAY_MS)
+            handler.postDelayed(autoRemove, AUTO_HIDE_MS)
             return START_NOT_STICKY
         }
         if (!Settings.canDrawOverlays(this)) {
@@ -156,7 +163,7 @@ class GearOverlayService : Service() {
 
         runCatching { wm.addView(view, params) }.onFailure { stopSelf(); return START_NOT_STICKY }
         overlayView = view
-        handler.postDelayed(autoRemove, DISPLAY_MS)
+        handler.postDelayed(autoRemove, AUTO_HIDE_MS)
         return START_NOT_STICKY
     }
 
