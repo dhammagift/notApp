@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.noapp.container.data.ConfigStore
+import com.noapp.container.data.LastLaunch
 import com.noapp.container.model.AppMode
 import com.noapp.container.model.AppTheme
 import com.noapp.container.model.ShortcutSlot
@@ -128,12 +129,15 @@ class QuickPickActivity : ComponentActivity() {
 
         sharedText = newSharedText
         theme = config.theme
-        // MIX already launches slot 0 directly on a plain tap (see MainActivity.dispatchIfShortcut)
-        // — showing it again here would be a visible duplicate of something that just happened.
-        // Only for a real tap dispatch, not a share-target pick, where slot 0 is still a valid
-        // destination to send the shared text to.
-        slots = if (config.mode == AppMode.MIX && newSharedText == null) {
-            configuredSlots.filter { it.id != 0 }
+        // MIX leaves out only the item that is already open behind this sheet — the app THIS app just
+        // launched: slot 0 after a plain tap (MainActivity launches it a moment before opening this),
+        // or the Quick Settings tile's slot when the list is pulled up over the app the tile started.
+        // Nothing is hidden when that launch is old enough that the user has probably moved on, and a
+        // share-target pick keeps every destination (slot 0 included: a share still has somewhere to
+        // go). See LastLaunch for why this is our own launch and not the real foreground app.
+        val alreadyOpen = if (newSharedText == null) LastLaunch.freshTarget(this) else null
+        slots = if (config.mode == AppMode.MIX && alreadyOpen != null) {
+            configuredSlots.filterNot { it.targetKey == alreadyOpen }
         } else {
             configuredSlots
         }
