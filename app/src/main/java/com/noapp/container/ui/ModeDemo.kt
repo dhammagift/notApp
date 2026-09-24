@@ -35,66 +35,64 @@ import com.noapp.container.model.AppMode
 import com.noapp.container.model.ShortcutSlot
 
 /**
- * A small, honest picture of what a mode does, shown inside the picker's own mode cards.
+ * One picture of how the mode that is selected right now behaves, shown under the picker's three
+ * paragraphs — the cards themselves stay text only, so the example reads as a footnote to them.
  *
- * It is a picture and not a live list on purpose: the picker's whole job is to say what the three
- * modes mean before one of them is chosen, so each card carries its own demo rather than one
- * shared preview area — a shared one could only ever show the mode that is already selected,
- * because in this dialog tapping a card both chooses and closes it.
- *
- * The rows are the user's real slots and their real icons, so a configured app shows its own icon.
- * With nothing configured yet the same rows are numbered placeholders, matching what an empty
- * config actually looks like.
+ * Only one mode is ever drawn, and that is the point: this dialog closes on the tap that selects a
+ * mode, so there is no way to look at another mode's example without choosing it. Drawing it from
+ * [slots] — the user's own config — is what makes it their case rather than a generic diagram; with
+ * nothing configured the rows are numbered placeholders, which is exactly what an empty config
+ * looks like. Nothing is launched to draw it.
  */
 @Composable
 fun ModeDemo(mode: AppMode, slots: List<ShortcutSlot>, modifier: Modifier = Modifier) {
     val items = if (slots.isEmpty()) List(DEMO_ROWS) { ShortcutSlot(id = it) } else slots
     Surface(
         modifier = modifier.fillMaxWidth().height(DEMO_HEIGHT),
-        shape = MaterialTheme.shapes.medium,
+        shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surface,
         // A hairline as well as the colour step: with dynamic colour the theme's own surface can
-        // land very close to the card it sits on, and the picture must still read as a panel.
+        // land very close to the dialog's own background, and the example must still read as a
+        // panel rather than as loose rows.
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         when (mode) {
-            AppMode.LIST -> Box(Modifier.padding(vertical = 6.dp)) {
+            AppMode.LIST -> Box(Modifier.padding(vertical = 8.dp)) {
                 Column {
                     items.take(DEMO_ROWS).forEachIndexed { index, slot ->
-                        DemoRow(slot, index + 1, iconSize = 26.dp, labelStyle = MaterialTheme.typography.bodySmall)
+                        DemoRow(slot, index + 1, iconSize = 28.dp, labelStyle = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
 
-            // Nothing is opened here: the icon of what WOULD open is the whole point, plus the
-            // one line that says so.
+            // Only the icon of what would open, plus the one line that says so.
             AppMode.DIRECT -> Column(
                 Modifier.fillMaxSize().padding(horizontal = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                DemoIcon(items[0], 1, 56.dp)
-                Spacer(Modifier.height(10.dp))
+                DemoIcon(items[0], 1, 64.dp)
+                Spacer(Modifier.height(12.dp))
                 Text(
                     stringResource(R.string.mode_demo_direct_opens, labelOf(items[0], 1)),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            // The icon first, and the list of the rest starting halfway down over it — the same
-            // "one item, then everything else" shape the mode itself has.
+            // The same icon, with the list of the rest starting halfway down over it: the mode's
+            // own "one item, then everything else" shape.
             AppMode.MIX -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-                DemoIcon(items[0], 1, 56.dp, modifier = Modifier.padding(top = 8.dp))
+                DemoIcon(items[0], 1, 64.dp, modifier = Modifier.padding(top = 12.dp))
                 Surface(
-                    modifier = Modifier.padding(top = 36.dp, start = 24.dp, end = 24.dp),
-                    shape = RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp),
+                    modifier = Modifier.padding(top = 44.dp, start = 28.dp, end = 28.dp),
+                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     shadowElevation = 3.dp
                 ) {
                     Column(Modifier.padding(vertical = 4.dp)) {
                         items.drop(1).take(MIX_SHEET_ROWS).forEachIndexed { index, slot ->
-                            DemoRow(slot, index + 2, iconSize = 22.dp, labelStyle = MaterialTheme.typography.labelSmall)
+                            DemoRow(slot, index + 2, iconSize = 24.dp, labelStyle = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
@@ -104,18 +102,13 @@ fun ModeDemo(mode: AppMode, slots: List<ShortcutSlot>, modifier: Modifier = Modi
 }
 
 @Composable
-private fun DemoRow(
-    slot: ShortcutSlot,
-    number: Int,
-    iconSize: Dp,
-    labelStyle: TextStyle
-) {
+private fun DemoRow(slot: ShortcutSlot, number: Int, iconSize: Dp, labelStyle: TextStyle) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 3.dp),
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         DemoIcon(slot, number, iconSize)
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(12.dp))
         Text(
             labelOf(slot, number),
             style = labelStyle,
@@ -147,6 +140,6 @@ private fun DemoIcon(slot: ShortcutSlot, number: Int, size: Dp, modifier: Modifi
 private fun labelOf(slot: ShortcutSlot, number: Int): String =
     slot.label.ifBlank { stringResource(R.string.common_item_n, number) }
 
-private val DEMO_HEIGHT = 118.dp
-private const val DEMO_ROWS = 3
-private const val MIX_SHEET_ROWS = 2
+private val DEMO_HEIGHT = 160.dp
+private const val DEMO_ROWS = 4
+private const val MIX_SHEET_ROWS = 3

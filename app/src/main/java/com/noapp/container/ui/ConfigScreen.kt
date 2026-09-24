@@ -262,8 +262,6 @@ private fun ModePickerDialog(
                                         AnnotatedString(stringResource(candidate.descriptionRes()))
                                     }
                                     Text(description, style = MaterialTheme.typography.bodyMedium)
-                                    Spacer(Modifier.padding(top = 10.dp))
-                                    ModeDemo(candidate, slots)
                                 }
                                 if (selected) {
                                     Icon(
@@ -275,6 +273,10 @@ private fun ModePickerDialog(
                             }
                         }
                     }
+                    // One example, of the mode that is on right now, under all three paragraphs:
+                    // the copies above stay short, and this is the picture of their case.
+                    Spacer(Modifier.padding(top = 4.dp))
+                    ModeDemo(currentMode, slots)
                 }
             }
         }
