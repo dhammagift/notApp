@@ -89,6 +89,7 @@
     <string name="config_mode_list_choice">☰ List ~ like a folder</string>
     <string name="config_mode_direct_choice">▶ Direct = your #1 app + shortcuts</string>
     <string name="config_mode_mix_choice">◫ Mix = Direct + List</string>
+    <string name="mode_demo_label">Demo</string>
     <string name="mode_demo_long_press">Hold the icon — shortcut menu</string>
     <string name="mode_demo_shortcuts_title">Shortcut menu</string>
     <string name="mode_demo_direct_opens">Opens right away: %1$s</string>

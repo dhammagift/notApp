@@ -52,7 +52,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -102,7 +106,6 @@ fun ModeDemo(
 ) {
     val items = if (slots.isEmpty()) List(PLACEHOLDER_ROWS) { ShortcutSlot(id = it) } else slots
     val context = LocalContext.current
-    val density = LocalDensity.current
     var recentApps by remember { mutableStateOf<List<RecentApp>>(emptyList()) }
     // The sheet's own rule: the strip appears when the setting is on AND usage access was granted.
     // With either missing there is nothing to draw, and that row keeps only the gear.
@@ -113,76 +116,89 @@ fun ModeDemo(
             emptyList()
         }
     }
-    var sheetHeightPx by remember { mutableIntStateOf(0) }
-
     Surface(
         modifier = modifier,
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainer
     ) {
-        // Keyed on the mode: switching modes must show the new example expanded, not the state the
-        // previous one was left in (a sheet collapsed to its handle, say).
-        key(mode) {
-            when (mode) {
-                AppMode.LIST -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-                    DemoSheet(
-                        items = items,
-                        startNumber = 1,
-                        recentApps = recentApps,
-                        modifier = Modifier.fillMaxWidth()
+        // Behind everything: a stand-in for the home screen the sheet opens over. Drawn from the
+        // theme rather than read from the real wallpaper — that read is restricted on recent Android
+        // versions, and the point here is only to make it read as "something behind the sheet", not
+        // to show the user their own screen.
+        val dotColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f)
+        val washColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.07f)
+        Box(
+            Modifier
+                .fillMaxSize()
+                .drawBehind { wallpaperPattern(dotColor, washColor) }
+        ) {
+            // Says out loud what the picture is, so the panel is never mistaken for live UI.
+            Text(
+                stringResource(R.string.mode_demo_label),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 10.dp, top = 8.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f),
+                        shape = RoundedCornerShape(8.dp)
                     )
-                }
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
+            )
+            // Keyed on the mode: switching modes must show the new example expanded, not the state the
+            // previous one was left in (a sheet collapsed to its handle, say).
+            key(mode) {
+                when (mode) {
+                    AppMode.LIST -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                        DemoSheet(
+                            items = items,
+                            startNumber = 1,
+                            recentApps = recentApps,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
 
-                AppMode.DIRECT -> Column(
-                    Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    HeroIcon(items[0], 1, onShowShortcuts)
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        stringResource(R.string.mode_demo_direct_opens, labelOf(items[0], 1)),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    DemoHint()
-                }
-
-                // The same hero icon, with the real list of the rest starting at its midline: the
-                // mode's own "one item, then everything else" shape. The icon block is lifted by the
-                // sheet's measured height, so its midline meets the sheet's top edge at any panel
-                // height and the icon is never half cut off by it.
-                AppMode.MIX -> Box(Modifier.fillMaxSize()) {
-                    DemoSheet(
-                        items = items.drop(1),
-                        startNumber = 2,
-                        recentApps = recentApps,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .padding(horizontal = MIX_SHEET_INSET),
-                        onHeight = { sheetHeightPx = it }
-                    )
-                    Box(
-                        Modifier
-                            .align(Alignment.BottomCenter)
-                            .offset {
-                                IntOffset(
-                                    0,
-                                    -(sheetHeightPx - with(density) { HERO_ICON.toPx() / 2f }.roundToInt())
-                                )
-                            }
+                    AppMode.DIRECT -> Column(
+                        Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            DemoHint()
-                            Spacer(Modifier.height(6.dp))
-                            HeroIcon(items[0], 1, onShowShortcuts)
+                        HeroIcon(items[0], 1, onShowShortcuts)
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            stringResource(R.string.mode_demo_direct_opens, labelOf(items[0], 1)),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        DemoHint()
+                    }
+
+                    // The icon the mode would launch first, then the list of the rest under it. The list
+                    // is drawn after the icon — the other way round the icon covered the rows, and that
+                    // reads backwards: an app that is on top of the list is a screen with no list on it.
+                    AppMode.MIX -> Column(Modifier.fillMaxSize()) {
+                        Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                DemoHint()
+                                Spacer(Modifier.height(6.dp))
+                                HeroIcon(items[0], 1, onShowShortcuts)
+                            }
                         }
+                        DemoSheet(
+                            items = items.drop(1),
+                            startNumber = 2,
+                            recentApps = recentApps,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = MIX_SHEET_INSET)
+                                .heightIn(max = MIX_SHEET_MAX_HEIGHT)
+                        )
+                    }
                     }
                 }
             }
         }
-    }
 }
 
 /**
@@ -204,11 +220,12 @@ private fun DemoSheet(
     val density = LocalDensity.current
     val collapseThresholdPx = with(density) { COLLAPSE_THRESHOLD.toPx() }
     var sheetHeightPx by remember { mutableIntStateOf(0) }
+    var handleStripPx by remember { mutableIntStateOf(0) }
     var dragPx by remember { mutableFloatStateOf(0f) }
     var collapsed by remember { mutableStateOf(false) }
     val settledPx by animateFloatAsState(
         targetValue = if (collapsed) {
-            (sheetHeightPx - with(density) { HANDLE_STRIP.toPx() }).coerceAtLeast(0f)
+            (sheetHeightPx - handleStripPx).coerceAtLeast(0f)
         } else {
             0f
         },
@@ -226,7 +243,8 @@ private fun DemoSheet(
             .offset { IntOffset(0, (settledPx + dragPx).roundToInt()) }
             .draggable(
                 orientation = Orientation.Vertical,
-                state = rememberDraggableState { delta -> dragPx += delta },
+                // Downwards only: the sheet is already fully open, so an upward drag must do nothing.
+                state = rememberDraggableState { delta -> dragPx = (dragPx + delta).coerceAtLeast(0f) },
                 onDragStopped = {
                     val moved = dragPx
                     dragPx = 0f
@@ -245,7 +263,10 @@ private fun DemoSheet(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .height(HANDLE_STRIP)
+                    // No fixed height here on purpose: Material3's own handle carries ~22dp of padding
+                    // above and below the pill, and squeezing it into a fixed strip collapsed the pill
+                    // to nothing — the handle was missing from the demo for exactly that reason.
+                    .onSizeChanged { handleStripPx = it.height }
                     .clickable(enabled = collapsed) { collapsed = false },
                 contentAlignment = Alignment.Center
             ) {
@@ -410,16 +431,38 @@ private fun DemoIcon(slot: ShortcutSlot, number: Int, size: Dp, modifier: Modifi
     Image(bitmap = bitmap, contentDescription = null, modifier = modifier.size(size))
 }
 
+/**
+ * A soft wash plus a dot grid, standing in for the home screen behind the sheet. Deliberately a
+ * pattern of our own: reading the real wallpaper is restricted on recent Android versions, and this
+ * only has to read as "there is a screen back there", not as the user's own.
+ */
+private fun DrawScope.wallpaperPattern(dot: Color, wash: Color) {
+    drawRect(Brush.verticalGradient(listOf(wash, Color.Transparent)))
+    val step = 26.dp.toPx()
+    val radius = 2.dp.toPx()
+    var y = step / 2f
+    while (y < size.height) {
+        var x = step / 2f
+        while (x < size.width) {
+            drawCircle(dot, radius, Offset(x, y))
+            x += step
+        }
+        y += step
+    }
+}
+
 @Composable
 private fun labelOf(slot: ShortcutSlot, number: Int): String =
     slot.label.ifBlank { stringResource(R.string.common_item_n, number) }
 
 private val DEMO_PADDING = 8.dp
 private val HERO_ICON = 104.dp
-private val HANDLE_STRIP = 40.dp
 private val COLLAPSE_THRESHOLD = 40.dp
 private val SHEET_CORNER = 22.dp
 private val MIX_SHEET_INSET = 24.dp
+
+/** Mix shows the list under the icon, and never taller than this, so the icon stays visible. */
+private val MIX_SHEET_MAX_HEIGHT = 220.dp
 
 /** The most the sheet grows to before its list scrolls instead. */
 private val SHEET_MAX_HEIGHT = 460.dp
