@@ -133,11 +133,6 @@ fun ModeDemo(
             emptyList()
         }
     }
-    // Owned here rather than inside the sheet: the floating button has to be able to open the list
-    // again, and that button only exists while the list is collapsed.
-    var collapsed by remember { mutableStateOf(false) }
-    var bubbleRemoved by remember { mutableStateOf(false) }
-
     Surface(
         modifier = modifier,
         shape = MaterialTheme.shapes.large,
@@ -159,6 +154,11 @@ fun ModeDemo(
             // Keyed on the mode: switching modes must show the new example expanded, not the state
             // the previous one was left in (a sheet collapsed to its handle, say).
             key(mode) {
+                // Declared inside the key, so every mode starts from the same place: a freshly opened
+                // list and its button back. Kept outside, the state survived a mode switch and the
+                // button looked like the thing that controlled how the next mode opened.
+                var collapsed by remember { mutableStateOf(false) }
+                var bubbleRemoved by remember { mutableStateOf(false) }
                 Box(Modifier.fillMaxSize()) {
                     when (mode) {
                         AppMode.LIST -> DemoSheet(
@@ -187,7 +187,10 @@ fun ModeDemo(
                         // The list is drawn after the icon — the other way round the icon covered the
                         // rows, and that reads backwards: an app on top of the list is a screen with
                         // no list on it.
-                        AppMode.MIX -> Column(Modifier.fillMaxSize()) {
+                        AppMode.MIX -> Column(
+                            Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
                             Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     DemoHint()
@@ -397,7 +400,15 @@ private fun BoxScope.DemoPeekBubble(
     val trashCenterY = panelHeightPx - with(density) { TRASH_BOTTOM_MARGIN.toPx() } -
         with(density) { TRASH_SIZE.toPx() } / 2
     val snapPx = with(density) { TRASH_SNAP.toPx() }
-    val overTrash = abs(centerX - trashCenterX) < snapPx && abs(centerY - trashCenterY) < snapPx
+    // Evaluated from the position passed in, because a lambda handed to detectDragGestures keeps the
+    // values it captured when it was created — reading the composed `overTrash` there meant the drop
+    // always saw "not over the ✕" and the button could never be thrown away.
+    fun overTrashAt(position: Offset): Boolean {
+        val cx = restX + position.x + sizePx / 2
+        val cy = restY + position.y + sizePx / 2
+        return abs(cx - trashCenterX) < snapPx && abs(cy - trashCenterY) < snapPx
+    }
+    val overTrash = overTrashAt(drag)
 
     // Shown only while the button is being dragged, exactly like the app's ✕ target — it is not a
     // permanent part of the demo.
@@ -436,7 +447,7 @@ private fun BoxScope.DemoPeekBubble(
                     onDragStart = { dragging = true },
                     onDragEnd = {
                         dragging = false
-                        if (overTrash) onRemove()
+                        if (overTrashAt(drag)) onRemove() else drag = clampInside(drag, restX, restY, sizePx, panelWidthPx, panelHeightPx)
                     },
                     onDragCancel = { dragging = false },
                     onDrag = { change, delta ->
