@@ -106,6 +106,7 @@ fun ModeDemo(
     mode: AppMode,
     slots: List<ShortcutSlot>,
     showRecentApps: Boolean,
+    useAllSlotsInDirectMode: Boolean,
     onShowShortcuts: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -329,12 +330,42 @@ private fun DemoSheet(
 
 /**
  * Our own drawing of the launcher's long-press menu. The real one belongs to the launcher and cannot
- * be embedded in an app, so this is the same four shortcuts in the same shape — app name, then the
- * shortcuts — over a dimmed screen, and it exists only in this picker.
+ * be embedded in an app, so this is the same entries in the same order — app name, then the menu —
+ * over a dimmed screen, and it exists only in this picker.
+ *
+ * The entries are the ones [com.noapp.container.shortcuts.ShortcutSync] would actually publish for
+ * the mode that is on, because a menu showing four slots where the real one shows a single
+ * "Configure" is worse than no example at all:
+ *  - DIRECT keeps its first entry for Configure while "Use all shortcut slots" is off (that toggle
+ *    needs the overlay permission, and without it the long-press menu is the only way back into
+ *    Settings); the rest are the configured slots other than the one a plain tap already launches.
+ *  - LIST publishes every configured slot, its own list having a Configure row inside it.
+ *  - MIX skips slot 0 for the same reason DIRECT does.
+ * With nothing configured the rows are numbered placeholders, and DIRECT previews its Configure
+ * entry, since that is what appears as soon as the first slot is set.
  */
 @Composable
-fun ShortcutMenuOverlay(appName: String, slots: List<ShortcutSlot>, onDismiss: () -> Unit) {
-    val items = if (slots.isEmpty()) List(SHORTCUT_MENU_ROWS) { ShortcutSlot(id = it) } else slots
+fun ShortcutMenuOverlay(
+    appName: String,
+    mode: AppMode,
+    slots: List<ShortcutSlot>,
+    useAllSlotsInDirectMode: Boolean,
+    onDismiss: () -> Unit
+) {
+    val configured = slots.filter { it.isConfigured }
+    val empty = configured.isEmpty()
+    val realRows = when {
+        empty -> List(SHORTCUT_MENU_ROWS) { ShortcutSlot(id = it) }
+        mode == AppMode.LIST -> configured
+        // DIRECT and MIX both leave slot 0 out: a plain tap already launches it.
+        else -> configured.filter { it.id != 0 }
+    }
+    val mainConfigured = empty || slots.getOrNull(0)?.isConfigured == true
+    val showConfigure = mode == AppMode.DIRECT && !useAllSlotsInDirectMode && mainConfigured
+    val entries: List<ShortcutSlot?> =
+        (if (showConfigure) listOf<ShortcutSlot?>(null) else emptyList()) +
+            realRows.take(SHORTCUT_MENU_ROWS).map { it as ShortcutSlot? }
+
     Box(
         Modifier
             .fillMaxSize()
@@ -374,12 +405,26 @@ fun ShortcutMenuOverlay(appName: String, slots: List<ShortcutSlot>, onDismiss: (
                     )
                 }
                 Spacer(Modifier.height(4.dp))
-                items.take(SHORTCUT_MENU_ROWS).forEachIndexed { index, slot ->
+                entries.take(SHORTCUT_MENU_ROWS).forEach { slot ->
                     ListItem(
                         headlineContent = {
-                            Text(labelOf(slot, index + 1), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                if (slot == null) {
+                                    stringResource(R.string.shortcut_configure_label)
+                                } else {
+                                    labelOf(slot, slot.id + 1)
+                                },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         },
-                        leadingContent = { DemoIcon(slot, index + 1, 40.dp) },
+                        leadingContent = {
+                            if (slot == null) {
+                                DemoIcon(null, 0, 40.dp)
+                            } else {
+                                DemoIcon(slot, slot.id + 1, 40.dp)
+                            }
+                        },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent)
                     )
                 }
@@ -417,20 +462,28 @@ private fun DemoHint(modifier: Modifier = Modifier) {
     )
 }
 
-/** A configured slot shows its real icon; an empty one shows its number, as the list itself does. */
+/**
+ * A configured slot shows its real icon; an empty one shows its number, as the list itself does.
+ * A null slot is the Configure entry, drawn with the same monogram [ShortcutSync] gives it.
+ */
 @Composable
-private fun DemoIcon(slot: ShortcutSlot, number: Int, size: Dp, modifier: Modifier = Modifier) {
-    if (slot.isConfigured) {
+private fun DemoIcon(slot: ShortcutSlot?, number: Int, size: Dp, modifier: Modifier = Modifier) {
+    if (slot != null && slot.isConfigured) {
         SlotIcon(slot, size = size, modifier = modifier)
         return
     }
     val sizePx = with(LocalDensity.current) { size.roundToPx() }
-    val bitmap = remember(number, sizePx) {
-        monogramBitmap(
-            text = number.toString(),
-            colorHex = PLACEHOLDER_COLORS[(number - 1) % PLACEHOLDER_COLORS.size],
-            sizePx = sizePx
-        ).asImageBitmap()
+    val bitmap = remember(slot, number, sizePx) {
+        val monogram = if (slot == null) {
+            monogramBitmap(CONFIGURE_GLYPH, CONFIGURE_COLOR, sizePx)
+        } else {
+            monogramBitmap(
+                text = number.toString(),
+                colorHex = PLACEHOLDER_COLORS[(number - 1) % PLACEHOLDER_COLORS.size],
+                sizePx = sizePx
+            )
+        }
+        monogram.asImageBitmap()
     }
     Image(bitmap = bitmap, contentDescription = null, modifier = modifier.size(size))
 }
@@ -448,6 +501,9 @@ private fun DrawScope.brandWallpaper(mark: Painter) {
             end = Offset(size.width, size.height)
         )
     )
+    // Dimmed on purpose: the sheet has to stay the brightest thing in the panel, and the first
+    // version of this backdrop competed with it.
+    drawRect(Color.Black.copy(alpha = WALLPAPER_SCRIM))
     val tile = size.minDimension * 0.42f
     val step = tile * 1.5f
     rotate(degrees = -18f) {
@@ -495,11 +551,16 @@ private val BRAND_GRADIENT = listOf(
     Color(0xFFA175F0)
 )
 private const val MARK_ALPHA = 0.16f
+private const val WALLPAPER_SCRIM = 0.18f
 
 /**
  * Numbered placeholders skip the palette's blues and lilac on purpose: the first of them is drawn
  * over a blue-to-violet backdrop, and the palette's first colour disappeared into it.
  */
+/** The same glyph and colour ShortcutSync paints on the reserved Configure shortcut. */
+private const val CONFIGURE_GLYPH = "\u2699"
+private const val CONFIGURE_COLOR = "#3C4043"
+
 private val PLACEHOLDER_COLORS = listOf(
     "#C0574C",
     "#D9A441",

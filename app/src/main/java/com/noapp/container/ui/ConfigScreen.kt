@@ -156,6 +156,7 @@ private fun ModePickerDialog(
     currentMode: AppMode,
     showPeekBubble: Boolean,
     showRecentApps: Boolean,
+    useAllSlotsInDirectMode: Boolean,
     slots: List<ShortcutSlot>,
     onModeSelected: (AppMode) -> Unit,
     onDismiss: () -> Unit
@@ -297,6 +298,7 @@ private fun ModePickerDialog(
                         mode = currentMode,
                         slots = slots,
                         showRecentApps = showRecentApps,
+                        useAllSlotsInDirectMode = useAllSlotsInDirectMode,
                         onShowShortcuts = { shortcutsShown = true },
                         modifier = Modifier
                             .weight(1f)
@@ -312,7 +314,9 @@ private fun ModePickerDialog(
                 if (shortcutsShown) {
                     ShortcutMenuOverlay(
                         appName = stringResource(R.string.app_name),
+                        mode = currentMode,
                         slots = slots,
+                        useAllSlotsInDirectMode = useAllSlotsInDirectMode,
                         onDismiss = { shortcutsShown = false }
                     )
                 }
@@ -328,6 +332,7 @@ fun ConfigScreen(
     slots: List<ShortcutSlot>,
     showPeekBubble: Boolean,
     showRecentApps: Boolean,
+    useAllSlotsInDirectMode: Boolean,
     hint: UiHint?,
     onHintShown: (UiHint) -> Unit,
     onEditSlot: (Int) -> Unit,
@@ -403,6 +408,7 @@ fun ConfigScreen(
                             currentMode = mode,
                             showPeekBubble = showPeekBubble,
                             showRecentApps = showRecentApps,
+                            useAllSlotsInDirectMode = useAllSlotsInDirectMode,
                             slots = slots,
                             // The dialog deliberately stays open on a choice: the example at the
                             // bottom is the whole point of it, and it can only show a mode once that

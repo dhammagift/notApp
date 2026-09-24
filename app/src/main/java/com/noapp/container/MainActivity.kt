@@ -483,6 +483,7 @@ private fun NoAppRoot(
             slots = slots,
             showPeekBubble = showPeekBubble,
             showRecentApps = showRecentApps,
+            useAllSlotsInDirectMode = useAllSlotsInDirectMode,
             hint = hint,
             onHintShown = onHintShown,
             onEditSlot = { index -> onScreenChange(Screen.EditSlot(index)) },
