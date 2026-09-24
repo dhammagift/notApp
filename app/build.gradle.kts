@@ -10,6 +10,11 @@ plugins {
 // refuses this flag together with a version or a Play upload.
 val alwaysAskForReview = providers.gradleProperty("alwaysAskForReview").orNull?.toBoolean() ?: false
 
+// Set for CI builds that are not releases: the commit lands in the version name, so Settings answers
+// "which build is this?" — the question that keeps coming up when an install silently keeps the APK
+// that was already there. Empty for anything with a version, i.e. for real releases.
+val testBuildTag = providers.gradleProperty("testBuildTag").orNull?.take(7)?.takeIf { it.isNotBlank() }
+
 android {
     namespace = "com.noapp.container"
     compileSdk = 36
@@ -23,6 +28,7 @@ android {
         // can't be forgotten or collide: major*10000 + minor*100 + patch (0.5.1 -> 501).
         val appVersion = "0.6.1"
         versionName = appVersion
+        if (testBuildTag != null) versionNameSuffix = "-$testBuildTag"
         versionCode = appVersion.split(".").map { it.toInt() }.let { (major, minor, patch) -> major * 10000 + minor * 100 + patch }
         buildConfigField("boolean", "ALWAYS_ASK_FOR_REVIEW", alwaysAskForReview.toString())
     }
