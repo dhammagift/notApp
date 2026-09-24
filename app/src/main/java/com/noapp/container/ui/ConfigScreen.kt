@@ -77,6 +77,11 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -220,7 +225,27 @@ private fun ModePickerDialog(
                                 Column(Modifier.weight(1f)) {
                                     Text(stringResource(candidate.choiceTitleRes()), style = MaterialTheme.typography.titleMedium)
                                     Spacer(Modifier.padding(top = 4.dp))
-                                    Text(stringResource(candidate.descriptionRes()), style = MaterialTheme.typography.bodyMedium)
+                                    // Direct's description carries two facts, and the second one —
+                                    // that Settings moved into the long-press menu — is the one nobody
+                                    // reads past. Bold and in the theme's alert colour, so choosing the
+                                    // mode is itself where that is learned.
+                                    val description = if (candidate == AppMode.DIRECT) {
+                                        buildAnnotatedString {
+                                            append(stringResource(R.string.config_mode_direct_desc))
+                                            append(" ")
+                                            withStyle(
+                                                SpanStyle(
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.error
+                                                )
+                                            ) {
+                                                append(stringResource(R.string.config_mode_direct_desc_settings))
+                                            }
+                                        }
+                                    } else {
+                                        AnnotatedString(stringResource(candidate.descriptionRes()))
+                                    }
+                                    Text(description, style = MaterialTheme.typography.bodyMedium)
                                 }
                                 if (selected) {
                                     Icon(

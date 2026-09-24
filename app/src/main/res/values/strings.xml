@@ -87,7 +87,10 @@
     <string name="config_mode_mix_choice">◫ Mix = List + Direct</string>
     <string name="config_mode_dialog_title">Choose mode</string>
     <string name="config_mode_list_desc">I open the shortcut list. Long-press my icon and I\'ll show you the first 4 items as shortcuts right away.</string>
-    <string name="config_mode_direct_desc">I launch your first item right away. Long-press my icon and I\'ll show the next 3 items plus Configure — or all 4 with no Configure if you turn on \"Use all shortcut slots\" in Settings.</string>
+    <string name="config_mode_direct_desc">I launch your first item right away.</string>
+    <!-- Rendered bold and in the alert colour right under the line above: in Direct, this is the one
+         fact users miss — that Settings moved into the long-press menu. -->
+    <string name="config_mode_direct_desc_settings">Settings are in the long-press menu: hold my icon and pick Configure — or turn on \"Use all shortcut slots\" to give that slot to a real item and open Settings from the gear instead.</string>
     <string name="config_mode_mix_desc">I launch your first item right away and also show the list of the rest. Long-press my icon and I\'ll show the first 4 items as shortcuts.</string>
     <string name="config_fill">Fill</string>
     <string name="config_settings_desc">Settings</string>
