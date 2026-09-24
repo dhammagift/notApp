@@ -78,6 +78,7 @@ import com.noapp.container.data.ConfigStore
 import com.noapp.container.icon.DownsampledImage
 import com.noapp.container.icon.ICON_VARIANTS
 import com.noapp.container.icon.IconVariant
+import com.noapp.container.data.ReviewStore
 import com.noapp.container.icon.enabledLauncherComponent
 import com.noapp.container.model.AppConfig
 import com.noapp.container.model.AppTheme
@@ -465,7 +466,13 @@ fun SettingsScreen(
                 headlineContent = { Text(stringResource(R.string.settings_rate_app)) },
                 supportingContent = { Text(stringResource(R.string.settings_rate_app_hint)) },
                 leadingContent = { Icon(Icons.Default.Star, contentDescription = null) },
-                modifier = Modifier.clickable { openStorePage(context) }
+                modifier = Modifier.clickable {
+                    // Same statement as answering the card: the user is on their way to the store, so
+                    // the automatic invitation has nothing left to ask for. The row itself stays —
+                    // only the unprompted card is settled by it.
+                    ReviewStore.stopAsking(context)
+                    openStorePage(context)
+                }
             )
             ListItem(
                 headlineContent = { Text(stringResource(R.string.settings_privacy_policy)) },
