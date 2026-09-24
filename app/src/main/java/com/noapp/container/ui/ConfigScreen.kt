@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
@@ -143,6 +145,7 @@ private fun AppMode.descriptionRes(): Int = when (this) {
 private fun ModePickerDialog(
     currentMode: AppMode,
     showPeekBubble: Boolean,
+    slots: List<ShortcutSlot>,
     onModeSelected: (AppMode) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -210,7 +213,7 @@ private fun ModePickerDialog(
                     }
                 )
                 Column(
-                    Modifier.padding(16.dp),
+                    Modifier.padding(16.dp).verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     AppMode.entries.forEach { candidate ->
@@ -259,6 +262,8 @@ private fun ModePickerDialog(
                                         AnnotatedString(stringResource(candidate.descriptionRes()))
                                     }
                                     Text(description, style = MaterialTheme.typography.bodyMedium)
+                                    Spacer(Modifier.padding(top = 10.dp))
+                                    ModeDemo(candidate, slots)
                                 }
                                 if (selected) {
                                     Icon(
@@ -356,6 +361,7 @@ fun ConfigScreen(
                         ModePickerDialog(
                             currentMode = mode,
                             showPeekBubble = showPeekBubble,
+                            slots = slots,
                             onModeSelected = {
                                 onModeChanged(it)
                                 modeDialogVisible = false
