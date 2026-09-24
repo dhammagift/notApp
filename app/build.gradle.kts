@@ -15,6 +15,12 @@ val alwaysAskForReview = providers.gradleProperty("alwaysAskForReview").orNull?.
 // that was already there. Empty for anything with a version, i.e. for real releases.
 val testBuildTag = providers.gradleProperty("testBuildTag").orNull?.take(7)?.takeIf { it.isNotBlank() }
 
+// CI run number for non-release builds. The version code is what Android compares when installing an
+// update: without it every test build carried the same 601 and an install could quietly keep the APK
+// that was already there, which is exactly how "nothing changed" happened three times in a row.
+// Releases keep the plain code derived from the version name.
+val buildNumber = providers.gradleProperty("buildNumber").orNull?.toIntOrNull()
+
 android {
     namespace = "com.noapp.container"
     compileSdk = 36
@@ -29,7 +35,8 @@ android {
         val appVersion = "0.6.1"
         versionName = appVersion
         if (testBuildTag != null) versionNameSuffix = "-$testBuildTag"
-        versionCode = appVersion.split(".").map { it.toInt() }.let { (major, minor, patch) -> major * 10000 + minor * 100 + patch }
+        val baseVersionCode = appVersion.split(".").map { it.toInt() }.let { (major, minor, patch) -> major * 10000 + minor * 100 + patch }
+        versionCode = if (testBuildTag != null) baseVersionCode * 1000 + (buildNumber ?: 0) else baseVersionCode
         buildConfigField("boolean", "ALWAYS_ASK_FOR_REVIEW", alwaysAskForReview.toString())
     }
 

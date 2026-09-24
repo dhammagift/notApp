@@ -50,6 +50,7 @@ jobs:
       # Non-release runs only: the commit goes into the version name, so the app itself says which
       # build is installed. A release (version given) keeps a clean version name.
       ORG_GRADLE_PROJECT_testBuildTag: ${{ inputs.version == '' && github.sha || '' }}
+      ORG_GRADLE_PROJECT_buildNumber: ${{ github.run_number }}
 
     steps:
       # The switch exists so the card can be looked at without waiting 60 days. It must never
