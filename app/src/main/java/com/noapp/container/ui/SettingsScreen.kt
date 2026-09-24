@@ -250,6 +250,10 @@ fun SettingsScreen(
         }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState())) {
+            // First thing in Settings while it is unanswered, and that is deliberate: in DIRECT
+            // mode this screen is the only place Not App itself is ever on screen, so the ask
+            // would otherwise be a row someone has to scroll past to find (or never notice).
+            ReviewCardIfDue(Modifier.padding(horizontal = 12.dp, vertical = 12.dp))
             ListItem(headlineContent = { Text(stringResource(R.string.settings_app_icon)) })
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -457,9 +461,6 @@ fun SettingsScreen(
                 }
             )
             HorizontalDivider()
-            // Due only twice in the app's life (see ReviewStore), so it is worth the space:
-            // in DIRECT mode this screen is the only place Not App itself is on screen.
-            ReviewCardIfDue(Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
             ListItem(
                 headlineContent = { Text(stringResource(R.string.settings_rate_app)) },
                 supportingContent = { Text(stringResource(R.string.settings_rate_app_hint)) },

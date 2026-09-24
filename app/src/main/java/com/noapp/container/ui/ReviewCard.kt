@@ -13,7 +13,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -96,15 +99,22 @@ fun ReviewCard(onDismissed: () -> Unit, modifier: Modifier = Modifier) {
                     ReviewStore.stopAsking(context)
                     onDismissed()
                 }) { Text(stringResource(R.string.review_card_never)) }
-                TextButton(onClick = {
-                    ReviewStore.snooze(context)
-                    onDismissed()
-                }) { Text(stringResource(R.string.review_card_later)) }
+                // "Later" writes nothing: the card is due until it is answered, so this only
+                // clears it off the screen it was shown on.
+                TextButton(onClick = onDismissed) {
+                    Text(stringResource(R.string.review_card_later))
+                }
                 Button(onClick = {
                     ReviewStore.stopAsking(context)
                     openStorePage(context)
                     onDismissed()
-                }) { Text(stringResource(R.string.review_card_rate)) }
+                }) {
+                    // A star on the button, not five tappable stars on the card: it says what
+                    // the tap does without suggesting the rating itself happens in here.
+                    Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.review_card_rate))
+                }
             }
         }
     }
