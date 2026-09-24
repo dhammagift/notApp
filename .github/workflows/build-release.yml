@@ -26,6 +26,11 @@ on:
         required: false
         type: boolean
         default: false
+      alwaysAskForReview:
+        description: 'TEST BUILD ONLY: rating card on every launch, its buttons change nothing. Fails if a version or a Play upload is also given.'
+        required: false
+        type: boolean
+        default: false
 
 # A newer push to the same branch supersedes a build still running for it; tags are unique
 # refs, so releases are never cancelled by this.
@@ -38,8 +43,21 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      # Gradle reads a project property from ORG_GRADLE_PROJECT_<name>, so one env var covers
+      # every gradle invocation below instead of threading -P through each step.
+      ORG_GRADLE_PROJECT_alwaysAskForReview: ${{ inputs.alwaysAskForReview }}
 
     steps:
+      # The switch exists so the card can be looked at without waiting 60 days. It must never
+      # leave through a release or reach Play, and the only reliable way to guarantee that is to
+      # refuse the combination here rather than to remember it later.
+      - name: Refuse the test switch on a release or a Play upload
+        if: inputs.alwaysAskForReview && (inputs.version != '' || inputs.play)
+        run: |
+          echo "alwaysAskForReview=true is a test-only switch; it cannot go with a version or a Play upload." >&2
+          exit 1
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -112,7 +130,7 @@ jobs:
         if: github.ref_type != 'tag' && (github.event_name != 'workflow_dispatch' || github.event.inputs.version == '')
         uses: actions/upload-artifact@v4
         with:
-          name: NotApp-${{ github.sha }}
+          name: NotApp-${{ github.sha }}${{ inputs.alwaysAskForReview && '-TEST-always-review' || '' }}
           path: |
             NotApp.apk
             NotApp.aab

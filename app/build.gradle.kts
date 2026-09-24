@@ -4,6 +4,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// Test-only switch, off unless -PalwaysAskForReview=true is passed (the CI "Run workflow"
+// input): the rating card then shows on every launch and its buttons change nothing, so it can
+// be looked at without waiting 60 days or clearing app data. Never a release: the workflow
+// refuses this flag together with a version or a Play upload.
+val alwaysAskForReview = providers.gradleProperty("alwaysAskForReview").orNull?.toBoolean() ?: false
+
 android {
     namespace = "com.noapp.container"
     compileSdk = 36
@@ -18,6 +24,7 @@ android {
         val appVersion = "0.6.1"
         versionName = appVersion
         versionCode = appVersion.split(".").map { it.toInt() }.let { (major, minor, patch) -> major * 10000 + minor * 100 + patch }
+        buildConfigField("boolean", "ALWAYS_ASK_FOR_REVIEW", alwaysAskForReview.toString())
     }
 
     buildTypes {
@@ -38,6 +45,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

@@ -1,6 +1,7 @@
 package com.noapp.container.data
 
 import android.content.Context
+import com.noapp.container.BuildConfig
 
 /**
  * When Not App may quietly ask for a Play rating.
@@ -11,6 +12,9 @@ import android.content.Context
  *
  * The first ask waits [FIRST_ASK_DAYS]; "later" buys exactly one more, at [LAST_ASK_DAYS];
  * after that — or after "never ask" / a tap on "rate" — nothing is ever shown again.
+ *
+ * [BuildConfig.ALWAYS_ASK_FOR_REVIEW] (a test build, see app/build.gradle.kts) overrides all of
+ * it: due on every launch, and the buttons deliberately change nothing.
  */
 object ReviewStore {
     const val FIRST_ASK_DAYS = 60L
@@ -36,7 +40,7 @@ object ReviewStore {
     }.getOrDefault(0L)
 
     /** Whether the card may be shown right now; the caller decides where it lands. */
-    fun cardDue(context: Context): Boolean = when (state(context)) {
+    fun cardDue(context: Context): Boolean = BuildConfig.ALWAYS_ASK_FOR_REVIEW || when (state(context)) {
         State.WAITING -> daysSinceInstall(context) >= FIRST_ASK_DAYS
         State.SNOOZED -> daysSinceInstall(context) >= LAST_ASK_DAYS
         State.DONE -> false
@@ -44,12 +48,14 @@ object ReviewStore {
 
     /** "Later": the first ask returns once at [LAST_ASK_DAYS], the second one never returns. */
     fun snooze(context: Context) {
+        if (BuildConfig.ALWAYS_ASK_FOR_REVIEW) return
         val next = if (state(context) == State.WAITING) State.SNOOZED else State.DONE
         prefs(context).edit().putString(KEY_STATE, next.name).apply()
     }
 
     /** "Never ask", or a tap on "rate" — either way we are done asking. */
     fun stopAsking(context: Context) {
+        if (BuildConfig.ALWAYS_ASK_FOR_REVIEW) return
         prefs(context).edit().putString(KEY_STATE, State.DONE.name).apply()
     }
 }
