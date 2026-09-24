@@ -298,6 +298,7 @@ private fun ModePickerDialog(
                         mode = currentMode,
                         slots = slots,
                         showRecentApps = showRecentApps,
+                        showPeekBubble = showPeekBubble,
                         useAllSlotsInDirectMode = useAllSlotsInDirectMode,
                         onShowShortcuts = { shortcutsShown = true },
                         modifier = Modifier
