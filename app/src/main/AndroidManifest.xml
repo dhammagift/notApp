@@ -269,6 +269,26 @@
             android:name=".shortcuts.QuickPickPeekOverlayService"
             android:exported="false" />
 
+        <!-- Not App in the Quick Settings shade (NotAppTileService): one tap from anywhere opens
+             the app exactly as its launcher icon does, so the current mode decides what happens —
+             the list, the primary action, or the list on top of it. exported="true" is required
+             because the system's Quick Settings process binds this service, and
+             BIND_QUICK_SETTINGS_TILE is a signature permission only the platform holds, so nothing
+             else can reach it. The icon is the app's own mark (drawable/ic_tile, converted from
+             icons/notApp.svg), not a system glyph; the label is the app's own name, so the shade
+             shows one name rather than a title plus a subtitle. The tile is invisible until the
+             reader drags it into the panel. -->
+        <service
+            android:name=".NotAppTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <!-- Lets Settings > Debug log hand the debug-log file to a share-sheet target (email,
              messaging app, etc.) as a real attachment instead of cramming it into EXTRA_TEXT. -->
         <provider
