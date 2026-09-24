@@ -69,6 +69,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.TransformOrigin
@@ -89,6 +90,7 @@ import com.noapp.container.icon.BoltIcon
 import com.noapp.container.icon.LinkIcon
 import com.noapp.container.icon.SlotIcon
 import com.noapp.container.icon.displayName
+import com.noapp.container.model.AppConfig
 import com.noapp.container.model.AppMode
 import com.noapp.container.model.ShortcutSlot
 import com.noapp.container.model.SlotType
@@ -235,7 +237,10 @@ fun ConfigScreen(
     onAddSlot: (SlotType) -> Unit,
     onOpenSettings: () -> Unit,
     onModeChanged: (AppMode) -> Unit,
-    onSlotsChanged: (List<ShortcutSlot>) -> Unit
+    onSlotsChanged: (List<ShortcutSlot>) -> Unit,
+    // AppConfig.tileSlot: which row's rocket marker is lit, and the only way to move it.
+    tileSlot: String,
+    onTileSlotChanged: (String) -> Unit
 ) {
     var showFillDialog by remember { mutableStateOf(false) }
     var fabExpanded by remember { mutableStateOf(false) }
@@ -429,7 +434,53 @@ fun ConfigScreen(
                         },
                         leadingContent = { SlotIcon(slot, size = 40.dp) },
                         trailingContent = {
-                            Row {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                // Two different facts about a row, so two different markers.
+                                // The star is "a plain tap opens this item": in DIRECT and MIX that is
+                                // slot 0, so tapping the star promotes the row to the top rather than
+                                // storing a second, competing notion of "main".
+                                // The rocket is "the Quick Settings tile launches this item" — it sits
+                                // on any row and never touches the order.
+                                Text(
+                                    if (index == 0) "\u2605" else "\u2606",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = if (index == 0) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.clickable {
+                                        if (index != 0) {
+                                            val promoted = slots.toMutableList()
+                                                .also { it.add(0, it.removeAt(index)) }
+                                            onSlotsChanged(promoted.mapIndexed { i, s -> s.copy(id = i) })
+                                        }
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(
+                                                context.getString(R.string.config_main_marker_hint)
+                                            )
+                                        }
+                                    }
+                                )
+                                Spacer(Modifier.width(14.dp))
+                                val isTileTarget = slot.targetKey != null && slot.targetKey == tileSlot
+                                Text(
+                                    "\uD83D\uDE80",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier
+                                        .alpha(if (isTileTarget) 1f else 0.3f)
+                                        .clickable(enabled = slot.isConfigured) {
+                                            val key = slot.targetKey ?: return@clickable
+                                            val wasAssigned = tileSlot == key
+                                            onTileSlotChanged(if (wasAssigned) AppConfig.TILE_NONE else key)
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar(
+                                                    context.getString(
+                                                        if (wasAssigned) R.string.config_tile_marker_off
+                                                        else R.string.config_tile_marker_on
+                                                    )
+                                                )
+                                            }
+                                        }
+                                )
+                                Spacer(Modifier.width(14.dp))
                                 Text(
                                     "✕",
                                     modifier = Modifier.clickable {

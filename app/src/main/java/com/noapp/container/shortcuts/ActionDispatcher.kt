@@ -11,19 +11,32 @@ import com.noapp.container.model.SlotType
 /** Executes one slot's target. [sharedText] is non-null only when triggered via the Sharing API. */
 object ActionDispatcher {
     fun execute(context: Context, slot: ShortcutSlot, sharedText: String? = null) {
-        if (!slot.isConfigured) return
+        val intent = intentFor(context, slot, sharedText) ?: return
         runCatching {
-            val intent = when (slot.type) {
-                SlotType.APP -> appIntent(context, slot.param, sharedText)
-                SlotType.URL -> Intent(Intent.ACTION_VIEW, Uri.parse(resolveTemplate(slot.param, sharedText)))
-                SlotType.INTENT ->
-                    Intent.parseUri(resolveTemplate(slot.param, sharedText), Intent.URI_INTENT_SCHEME)
-                null -> return
-            }
             context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }.onFailure {
             Toast.makeText(context, context.getString(R.string.toast_launch_failed, slot.label, it.message), Toast.LENGTH_SHORT).show()
         }
+    }
+
+    /**
+     * The intent [execute] would start, or null when the slot has nothing to run.
+     *
+     * Split out for the Quick Settings tile (NotAppTileService): a tile may not call startActivity
+     * itself on API 34+, it has to hand a PendingIntent to startActivityAndCollapse — but which
+     * intent a slot means must stay one implementation, or the tile and a list tap could drift.
+     */
+    fun intentFor(context: Context, slot: ShortcutSlot, sharedText: String? = null): Intent? {
+        if (!slot.isConfigured) return null
+        return runCatching {
+            when (slot.type) {
+                SlotType.APP -> appIntent(context, slot.param, sharedText)
+                SlotType.URL -> Intent(Intent.ACTION_VIEW, Uri.parse(resolveTemplate(slot.param, sharedText)))
+                SlotType.INTENT ->
+                    Intent.parseUri(resolveTemplate(slot.param, sharedText), Intent.URI_INTENT_SCHEME)
+                null -> null
+            }
+        }.getOrNull()
     }
 
     /** {{word}} in a URL/Intent param is replaced with the shared text (URL-encoded). No-op if absent or no share. */

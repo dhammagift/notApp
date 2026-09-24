@@ -46,4 +46,29 @@ class ConfigStoreTest {
         val restored = ConfigStore.fromJson("not json")
         assertEquals(AppConfig(), restored)
     }
+
+    @Test
+    fun `the shade tile's assigned slot survives a round trip`() {
+        // The assignment is what a row's rocket marker shows and what NotAppTileService reads back,
+        // and it names a slot by its target rather than its position — so it has to survive both the
+        // JSON and the reordering the list invites.
+        val config = AppConfig(
+            slots = listOf(
+                ShortcutSlot(id = 0, type = SlotType.URL, label = "Wiki", param = "https://wikipedia.org"),
+                ShortcutSlot(id = 1, type = SlotType.APP, label = "Camera", param = "com.android.camera2")
+            ),
+            tileSlot = "APP:com.android.camera2"
+        )
+
+        val restored = ConfigStore.fromJson(ConfigStore.toJson(config))
+
+        assertEquals("APP:com.android.camera2", restored.tileSlot)
+        assertEquals(restored.tileSlot, restored.slots[1].targetKey)
+        assertEquals(config, restored)
+    }
+
+    @Test
+    fun `an unconfigured slot has no target to point the tile at`() {
+        assertEquals(null, ShortcutSlot(id = 0).targetKey)
+    }
 }

@@ -23,6 +23,16 @@ data class ShortcutSlot(
 ) {
     val isConfigured: Boolean get() = type != null && param.isNotBlank()
 
+    /**
+     * What this slot opens, as a string that survives reordering and reloading: type plus param.
+     * Used by AppConfig.tileSlot to mark which row the Quick Settings tile runs (see
+     * NotAppTileService) — a row's own id cannot do that job, because ids are rebuilt from positions
+     * on every load, so a reordered list would move the mark to whatever landed in that slot.
+     *
+     * Null for an empty row, which has nothing to point at.
+     */
+    val targetKey: String? get() = if (isConfigured) "${type?.name}:$param" else null
+
     companion object {
         const val DEFAULT_COLOR = "#4A6FA5"
         // Muted, "designed" tones instead of raw web RGB — requested order:

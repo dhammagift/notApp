@@ -97,6 +97,13 @@
     <string name="config_cleared_named">Очищено \"%1$s\"</string>
     <string name="config_removed_plain">Удалено: %1$s</string>
 
+    <!-- Звёздочка — пункт, который открывается обычным тапом (в режимах Mix и Direct это первый
+         пункт, поэтому тап по звёздочке поднимает строку наверх). Ракета — пункт, который
+         запускает плитка в шторке; на порядок она не влияет. -->
+    <string name="config_main_marker_hint">По обычному тапу открывается этот пункт (режимы Mix и Direct).</string>
+    <string name="config_tile_marker_on">Этот пункт запускает плитка в шторке.</string>
+    <string name="config_tile_marker_off">Плитка снова открывает список.</string>
+
     <!-- Экран редактирования ярлыка -->
     <string name="slot_edit_title_main">Редактирование главного действия</string>
     <string name="slot_edit_title_item">Редактирование ярлыка %1$d</string>

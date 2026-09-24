@@ -98,6 +98,11 @@ class MainActivity : ComponentActivity() {
             var peekBubbleDockPeek by remember { mutableStateOf(initialConfig.peekBubbleDockPeek) }
             var showRecentApps by remember { mutableStateOf(initialConfig.showRecentApps) }
             var theme by remember { mutableStateOf(initialConfig.theme) }
+            // Which slot the Quick Settings tile runs (AppConfig.tileSlot, set from a row's rocket
+            // marker in the list), or TILE_NONE for "the same thing the launcher icon does". Read
+            // straight from config by the tile service, which is a separate component with no access
+            // to this state.
+            var tileSlot by remember { mutableStateOf(initialConfig.tileSlot) }
             // The one pending Snackbar message, if any — shown by whichever screen is up on its
             // own Scaffold's SnackbarHost (already positioned above its FAB and the system bars),
             // and cleared through onHintShown the moment that screen picks it up. See UiHint.
@@ -112,7 +117,7 @@ class MainActivity : ComponentActivity() {
             // deliberately NOT done here is touching the launcher alias for an icon change — see
             // reconcileLauncherIconOrRestart for why that can only ever happen on a fresh launch.
             fun persist() {
-                val config = AppConfig(mode, slots.toList(), useAllSlotsInDirectMode, iconVariant, showPeekBubble, peekBubbleReturns, peekBubbleSize, peekBubbleAlpha, peekBubbleDockPeek, showRecentApps, theme)
+                val config = AppConfig(mode, slots.toList(), useAllSlotsInDirectMode, iconVariant, showPeekBubble, peekBubbleReturns, peekBubbleSize, peekBubbleAlpha, peekBubbleDockPeek, showRecentApps, theme, tileSlot)
                 ConfigStore.save(this, config)
                 ShortcutSync.sync(this, mode, slots.toList(), useAllSlotsInDirectMode)
                 DebugLog.log(this, TAG, "persist: done mode=$mode variant=$iconVariant")
@@ -134,6 +139,7 @@ class MainActivity : ComponentActivity() {
                         peekBubbleDockPeek = peekBubbleDockPeek,
                         showRecentApps = showRecentApps,
                         theme = theme,
+                        tileSlot = tileSlot,
                         screen = screen,
                         hint = hint,
                         onHintShown = { shown -> if (hint?.id == shown.id) hint = null },
@@ -185,6 +191,10 @@ class MainActivity : ComponentActivity() {
                             theme = value
                             persist()
                         },
+                        onTileSlotChanged = { value ->
+                            tileSlot = value
+                            persist()
+                        },
                         onConfigImported = { imported ->
                             val iconChanged = imported.iconVariant != iconVariant
                             mode = imported.mode
@@ -205,6 +215,10 @@ class MainActivity : ComponentActivity() {
                             peekBubbleDockPeek = imported.peekBubbleDockPeek
                             showRecentApps = imported.showRecentApps && RecentApps.hasUsageAccess(this)
                             theme = imported.theme
+                            // Not permission-gated, so it comes straight from the backup: the tile
+                            // assignment travels with the config that describes the slots it points
+                            // at.
+                            tileSlot = imported.tileSlot
                             persist()
                             if (iconChanged) showHint(getString(R.string.icon_hint_message))
                         }
@@ -404,6 +418,7 @@ private fun NoAppRoot(
     peekBubbleDockPeek: Float,
     showRecentApps: Boolean,
     theme: AppTheme,
+    tileSlot: String,
     screen: Screen,
     hint: UiHint?,
     onHintShown: (UiHint) -> Unit,
@@ -419,6 +434,7 @@ private fun NoAppRoot(
     onPeekBubbleDockPeekChanged: (Float) -> Unit,
     onShowRecentAppsChanged: (Boolean) -> Unit,
     onThemeChanged: (AppTheme) -> Unit,
+    onTileSlotChanged: (String) -> Unit,
     onConfigImported: (AppConfig) -> Unit
 ) {
     if (screen !is Screen.Config) {
@@ -436,7 +452,9 @@ private fun NoAppRoot(
             onAddSlot = { type -> onScreenChange(Screen.NewSlot(type)) },
             onOpenSettings = { onScreenChange(Screen.Settings) },
             onModeChanged = onModeChanged,
-            onSlotsChanged = onSlotsChanged
+            onSlotsChanged = onSlotsChanged,
+            tileSlot = tileSlot,
+            onTileSlotChanged = onTileSlotChanged
         )
 
         is Screen.EditSlot -> SlotEditScreen(

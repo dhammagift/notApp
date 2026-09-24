@@ -100,6 +100,13 @@
     <string name="config_cleared_named">Cleared \"%1$s\"</string>
     <string name="config_removed_plain">Removed %1$s</string>
 
+    <!-- The two markers on a slot row in the list. The star is the item a plain tap opens (DIRECT
+         and MIX launch slot 0, so tapping a star moves the row to the top); the rocket is the item
+         the Quick Settings tile launches, which is independent of the order. -->
+    <string name="config_main_marker_hint">A plain tap opens this one in Mix and Direct modes.</string>
+    <string name="config_tile_marker_on">The Quick Settings tile launches this one.</string>
+    <string name="config_tile_marker_off">The Quick Settings tile opens the list again.</string>
+
     <!-- Slot edit screen -->
     <string name="slot_edit_title_main">Edit Main action</string>
     <string name="slot_edit_title_item">Edit Item %1$d</string>

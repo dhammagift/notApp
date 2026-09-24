@@ -51,5 +51,19 @@ data class AppConfig(
     // shows a compact icon-only row of recently-used apps above the configured items —
     // see recents/RecentApps.kt.
     val showRecentApps: Boolean = false,
-    val theme: AppTheme = AppTheme.SYSTEM
-)
+    val theme: AppTheme = AppTheme.SYSTEM,
+    // Settings-free: which slot the Quick Settings tile runs, as a ShortcutSlot.targetKey, or
+    // TILE_NONE for "whatever a tap on the launcher icon does" — the tile's original behaviour, and
+    // still the default, because a fresh install has no configured slots to point it at.
+    //
+    // The slot's TARGET (type + param), not its position: the marker can sit on any row without
+    // touching the order, and it stays on that row when the list is reordered or reloaded. Editing
+    // that row's target to something else drops the assignment — which is the honest outcome, since
+    // the tile would otherwise launch something the user never pointed it at.
+    val tileSlot: String = TILE_NONE
+) {
+    companion object {
+        /** tileSlot meaning "the tile is a second launcher icon, not a slot shortcut". */
+        const val TILE_NONE = ""
+    }
+}

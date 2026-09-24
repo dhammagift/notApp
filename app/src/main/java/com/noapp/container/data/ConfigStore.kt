@@ -51,6 +51,7 @@ object ConfigStore {
             .put("peekBubbleDockPeek", config.peekBubbleDockPeek.toDouble())
             .put("showRecentApps", config.showRecentApps)
             .put("theme", config.theme.name)
+            .put("tileSlot", config.tileSlot)
             .toString()
     }
 
@@ -87,7 +88,8 @@ object ConfigStore {
             peekBubbleDockPeek = root.optDouble("peekBubbleDockPeek", 0.375).toFloat().coerceIn(PEEK_DOCK_MIN, PEEK_DOCK_MAX),
             showRecentApps = root.optBoolean("showRecentApps", false),
             theme = runCatching { AppTheme.valueOf(root.optString("theme", AppTheme.SYSTEM.name)) }
-                .getOrDefault(AppTheme.SYSTEM)
+                .getOrDefault(AppTheme.SYSTEM),
+            tileSlot = root.optString("tileSlot", AppConfig.TILE_NONE)
         )
     }.getOrDefault(AppConfig())
 
