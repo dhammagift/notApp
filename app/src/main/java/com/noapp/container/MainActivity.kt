@@ -47,6 +47,14 @@ private sealed class Screen {
     data object Settings : Screen()
 }
 
+/**
+ * Set by NotAppTileService: run this slot target, and in Mix also show the list over it. The tile
+ * cannot do either itself on API 34+ (a tile starts exactly one activity, through a PendingIntent),
+ * and this is already the app's own "launch something, then maybe open the list" path — see
+ * dispatchIfShortcut.
+ */
+const val EXTRA_TILE_TARGET = "extra_tile_target"
+
 class MainActivity : ComponentActivity() {
     // Hoisted out of setContent (rather than a plain `remember`) so onNewIntent can navigate
     // back to Config below without needing a reference into the running composition.
@@ -308,6 +316,28 @@ class MainActivity : ComponentActivity() {
      */
     private fun dispatchIfShortcut(intent: Intent, config: AppConfig): Boolean {
         if (intent.getBooleanExtra(EXTRA_OPEN_CONFIG, false)) return false // Configure entry: show UI instead
+
+        // The shade tile asked for one specific slot. Mix means what it means everywhere else in the
+        // app: the slot runs AND the list comes up over it, with that item left out (the sheet is told
+        // what was launched). In List and Direct the slot simply runs — there the list is either
+        // already the app's own screen or not part of a plain launch at all.
+        // A stale assignment (the slot was edited away) falls through to the ordinary tap handling
+        // below, i.e. the tile behaves like the launcher icon again.
+        val tileTarget = intent.getStringExtra(EXTRA_TILE_TARGET)
+        if (tileTarget != null) {
+            val slot = config.slots.firstOrNull { it.targetKey == tileTarget }
+            if (slot != null) {
+                ActionDispatcher.execute(this, slot)
+                if (config.mode == AppMode.MIX) {
+                    startActivity(
+                        Intent(this, QuickPickActivity::class.java)
+                            .putExtra(EXTRA_LAUNCHED_TARGET, tileTarget)
+                    )
+                }
+                finishWithoutTransition()
+                return true
+            }
+        }
 
         val explicitId = intent.getIntExtra(EXTRA_SLOT_ID, -1)
         if (explicitId >= 0) {
