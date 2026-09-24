@@ -5,15 +5,18 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -24,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -39,14 +41,18 @@ import com.noapp.container.model.ShortcutSlot
  * paragraphs — the cards themselves stay text only, so the example reads as a footnote to them.
  *
  * Only one mode is ever drawn, and that is the point: this dialog closes on the tap that selects a
- * mode, so there is no way to look at another mode's example without choosing it. Drawing it from
- * [slots] — the user's own config — is what makes it their case rather than a generic diagram; with
- * nothing configured the rows are numbered placeholders, which is exactly what an empty config
- * looks like. Nothing is launched to draw it.
+ * mode, so there is no way to look at another mode's example without choosing it.
+ *
+ * The list here is the real one, not a diagram of one: the same rows the sheet builds (a [ListItem]
+ * with the slot's own icon and label), under the same drag handle, and it really scrolls when the
+ * config holds more items than fit. That is also why it is capped by [LIST_HEIGHT] rather than
+ * growing with the config: uncapped, a long list would push the three descriptions off the screen.
+ * With nothing configured the rows are numbered placeholders, which is what an empty config looks
+ * like. Nothing is ever launched to draw any of it.
  */
 @Composable
 fun ModeDemo(mode: AppMode, slots: List<ShortcutSlot>, modifier: Modifier = Modifier) {
-    val items = if (slots.isEmpty()) List(DEMO_ROWS) { ShortcutSlot(id = it) } else slots
+    val items = if (slots.isEmpty()) List(PLACEHOLDER_ROWS) { ShortcutSlot(id = it) } else slots
     Surface(
         modifier = modifier.fillMaxWidth().height(DEMO_HEIGHT),
         shape = MaterialTheme.shapes.large,
@@ -57,21 +63,19 @@ fun ModeDemo(mode: AppMode, slots: List<ShortcutSlot>, modifier: Modifier = Modi
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         when (mode) {
-            AppMode.LIST -> Box(Modifier.padding(vertical = 8.dp)) {
-                Column {
-                    items.take(DEMO_ROWS).forEachIndexed { index, slot ->
-                        DemoRow(slot, index + 1, iconSize = 28.dp, labelStyle = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-            }
+            AppMode.LIST -> DemoSheet(
+                items = items,
+                startNumber = 1,
+                listHeight = LIST_HEIGHT,
+                modifier = Modifier.fillMaxSize()
+            )
 
-            // Only the icon of what would open, plus the one line that says so.
             AppMode.DIRECT -> Column(
                 Modifier.fillMaxSize().padding(horizontal = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                DemoIcon(items[0], 1, 64.dp)
+                DemoIcon(items[0], 1, HERO_ICON)
                 Spacer(Modifier.height(12.dp))
                 Text(
                     stringResource(R.string.mode_demo_direct_opens, labelOf(items[0], 1)),
@@ -80,41 +84,58 @@ fun ModeDemo(mode: AppMode, slots: List<ShortcutSlot>, modifier: Modifier = Modi
                 )
             }
 
-            // The same icon, with the list of the rest starting halfway down over it: the mode's
-            // own "one item, then everything else" shape.
+            // The same hero icon, with the real list of the rest starting halfway down over it:
+            // the mode's own "one item, then everything else" shape.
             AppMode.MIX -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-                DemoIcon(items[0], 1, 64.dp, modifier = Modifier.padding(top = 12.dp))
-                Surface(
-                    modifier = Modifier.padding(top = 44.dp, start = 28.dp, end = 28.dp),
-                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shadowElevation = 3.dp
-                ) {
-                    Column(Modifier.padding(vertical = 4.dp)) {
-                        items.drop(1).take(MIX_SHEET_ROWS).forEachIndexed { index, slot ->
-                            DemoRow(slot, index + 2, iconSize = 24.dp, labelStyle = MaterialTheme.typography.bodySmall)
-                        }
-                    }
-                }
+                DemoIcon(items[0], 1, HERO_ICON, modifier = Modifier.padding(top = DEMO_PADDING))
+                DemoSheet(
+                    items = items.drop(1),
+                    startNumber = 2,
+                    listHeight = MIX_LIST_HEIGHT,
+                    modifier = Modifier
+                        .padding(top = DEMO_PADDING + HERO_ICON / 2, start = 24.dp, end = 24.dp)
+                        .height(MIX_SHEET_HEIGHT)
+                )
             }
         }
     }
 }
 
+/** The sheet's own chrome: same handle, same rows, capped so it cannot grow past its height. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DemoRow(slot: ShortcutSlot, number: Int, iconSize: Dp, labelStyle: TextStyle) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 3.dp),
-        verticalAlignment = Alignment.CenterVertically
+private fun DemoSheet(
+    items: List<ShortcutSlot>,
+    startNumber: Int,
+    listHeight: Dp,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shadowElevation = 4.dp
     ) {
-        DemoIcon(slot, number, iconSize)
-        Spacer(Modifier.width(12.dp))
-        Text(
-            labelOf(slot, number),
-            style = labelStyle,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        Column(Modifier.padding(top = DEMO_PADDING)) {
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                BottomSheetDefaults.DragHandle()
+            }
+            LazyColumn(Modifier.height(listHeight)) {
+                itemsIndexed(items, key = { index, _ -> index }) { index, slot ->
+                    // Same row as the real sheet: the slot's icon and its label, nothing added.
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                labelOf(slot, startNumber + index),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
+                        leadingContent = { DemoIcon(slot, startNumber + index, 32.dp) }
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -140,6 +161,11 @@ private fun DemoIcon(slot: ShortcutSlot, number: Int, size: Dp, modifier: Modifi
 private fun labelOf(slot: ShortcutSlot, number: Int): String =
     slot.label.ifBlank { stringResource(R.string.common_item_n, number) }
 
-private val DEMO_HEIGHT = 160.dp
-private const val DEMO_ROWS = 4
-private const val MIX_SHEET_ROWS = 3
+/** Enough for the panel; the rows inside keep the sheet's real single-line height. */
+private val DEMO_HEIGHT = 208.dp
+private val DEMO_PADDING = 8.dp
+private val HERO_ICON = 104.dp
+private val LIST_HEIGHT = 168.dp
+private val MIX_LIST_HEIGHT = 112.dp
+private val MIX_SHEET_HEIGHT = 142.dp
+private const val PLACEHOLDER_ROWS = 4
