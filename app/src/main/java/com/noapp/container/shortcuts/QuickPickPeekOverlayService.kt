@@ -1,5 +1,7 @@
 package com.noapp.container.shortcuts
 
+import android.view.animation.OvershootInterpolator
+import android.view.HapticFeedbackConstants
 import android.animation.ValueAnimator
 import android.app.Service
 import android.content.Context
@@ -53,6 +55,9 @@ private const val DOCK_SCALE = 0.9f
 private const val DOCK_ALPHA_FACTOR = 0.6f
 private const val DOCK_ANIM_MS = 300L
 private const val UNDOCK_ANIM_MS = 160L
+private const val BUBBLE_IN_MS = 280L
+private const val TRASH_IN_MS = 220L
+private const val TRASH_OUT_MS = 180L
 
 /**
  * MIX/LIST mode's collapsed-list affordance: a small draggable button drawn as a
@@ -220,9 +225,12 @@ class QuickPickPeekOverlayService : Service() {
         var animator: ValueAnimator? = null
         val easeOut = PathInterpolator(0.2f, 0f, 0f, 1f)
 
+        // Shrinks away first, then leaves the window manager.
         fun removeTrashView() {
-            trashView?.let { runCatching { wm.removeView(it) } }
+            val t = trashView ?: return
             trashView = null
+            t.animate().alpha(0f).scaleX(0.5f).scaleY(0.5f).setDuration(TRASH_OUT_MS)
+                .withEndAction { runCatching { wm.removeView(t) } }
         }
 
         fun persistPosition() {
@@ -320,6 +328,7 @@ class QuickPickPeekOverlayService : Service() {
                     val dy = event.rawY - downRawY
                     if (!dragging && (abs(dx) > tapSlopPx || abs(dy) > tapSlopPx)) {
                         dragging = true
+                        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                         if (dock != 0) {
                             // Pulling it out of the edge: back to full size and opacity, and
                             // re-based so it lands fully on screen and follows the finger 1:1
@@ -333,7 +342,14 @@ class QuickPickPeekOverlayService : Service() {
                             val newTrash = roundIconView(overlayContext, trashSizePx, R.drawable.ic_close_bubble, 0xE6D32F2F.toInt()).apply {
                                 contentDescription = context.getString(R.string.quick_pick_remove_desc)
                             }
-                            runCatching { wm.addView(newTrash, trashParams) }.onSuccess { trashView = newTrash }
+                            newTrash.alpha = 0f
+                            newTrash.scaleX = 0.5f
+                            newTrash.scaleY = 0.5f
+                            runCatching { wm.addView(newTrash, trashParams) }.onSuccess {
+                                trashView = newTrash
+                                newTrash.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(TRASH_IN_MS)
+                                    .setInterpolator(OvershootInterpolator())
+                            }
                         }
                     }
                     if (dragging) {
@@ -348,6 +364,7 @@ class QuickPickPeekOverlayService : Service() {
                             hypot((bubbleCenterX - trashCx).toDouble(), (bubbleCenterY - trashCy).toDouble()) < trashActivateRadiusPx
                         if (nowOverTrash != overTrash) {
                             overTrash = nowOverTrash
+                            if (overTrash) view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                             view.animate().scaleX(if (overTrash) 0.7f else 1f).scaleY(if (overTrash) 0.7f else 1f)
                                 .setDuration(120).start()
                             trashView?.animate()?.scaleX(if (overTrash) 1.25f else 1f)?.scaleY(if (overTrash) 1.25f else 1f)
@@ -359,6 +376,7 @@ class QuickPickPeekOverlayService : Service() {
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     velocityTracker?.addMovement(event)
                     if (dragging) {
+                        val trashAt = trashCenter()
                         removeTrashView()
                         if (overTrash) {
                             // Dragging to the trash is an explicit "stop showing this". By default
@@ -369,7 +387,19 @@ class QuickPickPeekOverlayService : Service() {
                                 val config = ConfigStore.load(this)
                                 if (!config.peekBubbleReturns) ConfigStore.save(this, config.copy(showPeekBubble = false))
                             }
-                            stopSelf()
+                            // Swallowed by the trash: into its centre, shrinking and fading, then gone.
+                            if (trashAt == null) {
+                                stopSelf()
+                            } else {
+                                val (cx, cy) = trashAt
+                                animateTo(
+                                    (cx - sizePx / 2f).roundToInt(),
+                                    (cy - sizePx / 2f).roundToInt(),
+                                    0f,
+                                    0.2f,
+                                    TRASH_OUT_MS
+                                ) { stopSelf() }
+                            }
                         } else {
                             velocityTracker?.computeCurrentVelocity(1000, maxFlingVelocityPx)
                             settle(
@@ -391,7 +421,15 @@ class QuickPickPeekOverlayService : Service() {
             }
         }
 
+        // Pops in from half its size rather than appearing out of nowhere.
+        val restAlpha = view.alpha
+        val restScale = view.scaleX
+        view.alpha = 0f
+        view.scaleX = restScale * 0.5f
+        view.scaleY = restScale * 0.5f
         runCatching { wm.addView(view, params) }.onFailure { stopSelf(); return START_NOT_STICKY }
+        view.animate().alpha(restAlpha).scaleX(restScale).scaleY(restScale).setDuration(BUBBLE_IN_MS)
+            .setInterpolator(OvershootInterpolator())
         bubbleView = view
         return START_NOT_STICKY
     }

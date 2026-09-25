@@ -1,5 +1,6 @@
 package com.noapp.container.ui
 
+import android.view.HapticFeedbackConstants
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -59,6 +60,9 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -75,6 +79,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -148,6 +153,7 @@ fun SettingsScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val view = LocalView.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
     // Where the two rows worth pointing at sit, so the screen can scroll to one of them.
@@ -294,7 +300,7 @@ fun SettingsScreen(
                             )
                         )
                     }) {
-                        Icon(Icons.Default.Share, contentDescription = stringResource(R.string.settings_share))
+                        MorphIcon(Icons.Default.Share, stringResource(R.string.settings_share), from = Icons.Default.Settings)
                     }
                 }
             )
@@ -324,8 +330,12 @@ fun SettingsScreen(
                                 .size(56.dp)
                                 .clip(RoundedCornerShape(16.dp))
                                 .border(
-                                    width = if (selected) 2.dp else 0.dp,
-                                    color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                    width = animateDpAsState(if (selected) 2.dp else 0.dp, tween(200), label = "iconBorder").value,
+                                    color = animateColorAsState(
+                                        if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                        tween(200),
+                                        label = "iconBorderColor"
+                                    ).value,
                                     shape = RoundedCornerShape(16.dp)
                                 )
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
@@ -386,17 +396,20 @@ fun SettingsScreen(
                 ),
                 headlineContent = { Text(stringResource(R.string.settings_use_all_slots)) },
                 supportingContent = {
-                    Text(
-                        stringResource(
-                            if (config.useAllSlotsInDirectMode) R.string.settings_use_all_slots_on
-                            else R.string.settings_use_all_slots_off
+                    Crossfade(config.useAllSlotsInDirectMode, animationSpec = tween(220), label = "useAllSlotsText") { on ->
+                        Text(
+                            stringResource(
+                                if (on) R.string.settings_use_all_slots_on
+                                else R.string.settings_use_all_slots_off
+                            )
                         )
-                    )
+                    }
                 },
                 trailingContent = {
                     Switch(
                         checked = config.useAllSlotsInDirectMode,
                         onCheckedChange = { turningOn ->
+                            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                             when {
                                 !turningOn -> onUseAllSlotsInDirectModeChanged(false)
                                 AndroidSettings.canDrawOverlays(context) -> onUseAllSlotsInDirectModeChanged(true)
@@ -419,6 +432,7 @@ fun SettingsScreen(
                     Switch(
                         checked = config.showRecentApps,
                         onCheckedChange = { turningOn ->
+                            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                             when {
                                 !turningOn -> onShowRecentAppsChanged(false)
                                 RecentApps.hasUsageAccess(context) -> onShowRecentAppsChanged(true)
@@ -441,6 +455,7 @@ fun SettingsScreen(
                     Switch(
                         checked = config.showPeekBubble,
                         onCheckedChange = { turningOn ->
+                            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                             when {
                                 !turningOn -> onShowPeekBubbleChanged(false)
                                 AndroidSettings.canDrawOverlays(context) -> onShowPeekBubbleChanged(true)
@@ -457,7 +472,10 @@ fun SettingsScreen(
                 trailingContent = {
                     Switch(
                         checked = config.peekBubbleReturns,
-                        onCheckedChange = onPeekBubbleReturnsChanged
+                        onCheckedChange = {
+                            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                            onPeekBubbleReturnsChanged(it)
+                        }
                     )
                 }
             )

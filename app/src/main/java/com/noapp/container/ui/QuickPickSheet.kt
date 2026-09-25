@@ -4,7 +4,10 @@ import android.app.Activity
 import android.content.Intent
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.fadeIn
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -31,6 +34,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
@@ -227,7 +231,9 @@ fun QuickPickSheet(
             // background behind the sheet shows through. Padding the content instead keeps the
             // Surface's background flush with the bottom of the screen while still keeping the
             // actual controls clear of the nav bar / gesture area.
-            Column(Modifier.navigationBarsPadding().padding(bottom = 24.dp)) {
+            // animateContentSize: recent apps arrive after the sheet is already up, and the sheet
+            // should grow to take them rather than jump.
+            Column(Modifier.navigationBarsPadding().padding(bottom = 24.dp).animateContentSize()) {
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                     BottomSheetDefaults.DragHandle()
                 }
@@ -244,21 +250,30 @@ fun QuickPickSheet(
                     Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (recentApps.isNotEmpty()) {
-                        RecentAppsIcons(
-                            apps = recentApps,
-                            modifier = Modifier.weight(1f),
-                            onLaunched = ::leaveWithPeek
-                        )
-                        VerticalDivider(Modifier.height(24.dp).padding(horizontal = 4.dp))
-                    } else {
-                        Spacer(Modifier.weight(1f))
+                    AnimatedVisibility(
+                        visible = recentApps.isNotEmpty(),
+                        modifier = Modifier.weight(1f),
+                        enter = fadeIn(tween(RECENTS_FADE_MS))
+                    ) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            RecentAppsIcons(
+                                apps = recentApps,
+                                modifier = Modifier.weight(1f),
+                                onLaunched = ::leaveWithPeek
+                            )
+                            VerticalDivider(Modifier.height(24.dp).padding(horizontal = 4.dp))
+                        }
                     }
+                    if (recentApps.isEmpty()) Spacer(Modifier.weight(1f))
                     IconButton(onClick = onConfigure) {
-                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.quick_pick_configure_desc))
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = stringResource(R.string.quick_pick_configure_desc),
+                            modifier = Modifier.spinInOnAppear()
+                        )
                     }
                 }
-                if (recentApps.isNotEmpty()) HorizontalDivider()
+                AnimatedVisibility(recentApps.isNotEmpty(), enter = fadeIn(tween(RECENTS_FADE_MS))) { HorizontalDivider() }
                 if (sharedText != null) {
                     Text(
                         stringResource(R.string.quick_pick_send_to, sharedText),
@@ -267,11 +282,11 @@ fun QuickPickSheet(
                     )
                 }
                 LazyColumn(Modifier.heightIn(max = maxListHeight)) {
-                    items(slots, key = { it.id }) { slot ->
+                    itemsIndexed(slots, key = { _, it -> it.id }) { index, slot ->
                         ListItem(
                             headlineContent = { Text(slot.label.ifBlank { stringResource(R.string.common_item_n, slot.id + 1) }) },
                             leadingContent = { SlotIcon(slot, size = 32.dp) },
-                            modifier = Modifier.clickable {
+                            modifier = Modifier.riseInOnAppear(index).clickable {
                                 ActionDispatcher.execute(context, slot, sharedText)
                                 leaveWithPeek()
                             }
@@ -331,6 +346,7 @@ private fun PeekPill(onClick: () -> Unit) {
     Box(Modifier.fillMaxSize().padding(20.dp), contentAlignment = Alignment.BottomEnd) {
         Box(
             Modifier
+                .popInOnAppear()
                 .size(48.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.primaryContainer)
@@ -345,3 +361,5 @@ private fun PeekPill(onClick: () -> Unit) {
         }
     }
 }
+
+private const val RECENTS_FADE_MS = 260

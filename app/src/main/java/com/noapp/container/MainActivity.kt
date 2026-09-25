@@ -6,6 +6,13 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -492,6 +499,32 @@ private fun NoAppRoot(
     // that demo rather than on the item list, because that is where they were.
     var pickerAfterSettings by remember { mutableStateOf(false) }
 
+    // The screen shown before this one, for ConfigScreen's gear. A plain holder, not state: it only
+    // follows [screen], so it never needs to trigger a recomposition of its own.
+    val history = remember { object { var shown: Screen = screen; var from: Screen? = null } }
+    if (history.shown != screen) {
+        history.from = history.shown
+        history.shown = screen
+    }
+
+    AnimatedContent(
+        targetState = screen,
+        // Per kind of screen: editing another slot is not a new screen to animate into.
+        contentKey = { it::class },
+        transitionSpec = {
+            // Config <-> Settings only cross-fade, so the gear/share button stays put while it turns
+            // into the other one. The editor slides, from the right in and back out to it.
+            val settings = initialState is Screen.Settings || targetState is Screen.Settings
+            val dir = if (targetState is Screen.Config) -1 else 1
+            if (settings) {
+                fadeIn(tween(SCREEN_FADE_IN_MS, delayMillis = SCREEN_FADE_OUT_MS / 2)) togetherWith fadeOut(tween(SCREEN_FADE_OUT_MS))
+            } else {
+                (fadeIn(tween(SCREEN_FADE_IN_MS)) + slideInHorizontally(tween(SCREEN_SLIDE_MS)) { dir * it / 6 }) togetherWith
+                    (fadeOut(tween(SCREEN_FADE_OUT_MS)) + slideOutHorizontally(tween(SCREEN_SLIDE_MS)) { -dir * it / 6 })
+            }
+        },
+        label = "screen"
+    ) { screen ->
     when (screen) {
         is Screen.Config -> ConfigScreen(
             mode = mode,
@@ -504,6 +537,7 @@ private fun NoAppRoot(
             peekBubbleDockPeek = peekBubbleDockPeek,
             peekBubbleReturns = peekBubbleReturns,
             openPickerOnStart = pickerAfterSettings,
+            backFromSettings = history.from is Screen.Settings,
             onPickerOpened = { pickerAfterSettings = false },
             hint = hint,
             onHintShown = onHintShown,
@@ -577,4 +611,9 @@ private fun NoAppRoot(
             onBack = { onScreenChange(Screen.Config) }
         )
     }
+    }
 }
+
+private const val SCREEN_FADE_IN_MS = 240
+private const val SCREEN_FADE_OUT_MS = 160
+private const val SCREEN_SLIDE_MS = 300

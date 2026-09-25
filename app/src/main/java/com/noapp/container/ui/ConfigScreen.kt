@@ -3,9 +3,15 @@ package com.noapp.container.ui
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings as AndroidSettings
+import android.view.HapticFeedbackConstants
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -45,6 +51,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -95,6 +102,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -377,6 +385,8 @@ fun ConfigScreen(
     peekBubbleReturns: Boolean,
     // Set when the user is coming back from Settings they reached through this demo.
     openPickerOnStart: Boolean,
+    // Settings' share button sits where this gear does, so coming back the gear turns out of it.
+    backFromSettings: Boolean = false,
     onPickerOpened: () -> Unit,
     hint: UiHint?,
     onHintShown: (UiHint) -> Unit,
@@ -407,6 +417,7 @@ fun ConfigScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val view = LocalView.current
     val undoLabel = stringResource(R.string.common_undo)
 
     // Reuses this screen's own Scaffold-hosted SnackbarHost (already correctly positioned above
@@ -457,7 +468,11 @@ fun ConfigScreen(
                 actions = {
                     AssistChip(
                         onClick = { modeDialogVisible = true },
-                        label = { Text(stringResource(mode.labelRes())) }
+                        label = {
+                            AnimatedContent(mode, transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(120)) }, label = "modeChip") {
+                                Text(stringResource(it.labelRes()))
+                            }
+                        }
                     )
                     if (modeDialogVisible) {
                         ModePickerDialog(
@@ -485,7 +500,11 @@ fun ConfigScreen(
                     }
                     TextButton(onClick = { showFillDialog = true }) { Text(stringResource(R.string.config_fill)) }
                     IconButton(onClick = { onOpenSettings(null) }) {
-                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.config_settings_desc))
+                        MorphIcon(
+                            Icons.Default.Settings,
+                            stringResource(R.string.config_settings_desc),
+                            from = if (backFromSettings) Icons.Default.Share else null
+                        )
                     }
                 }
             )
@@ -577,10 +596,18 @@ fun ConfigScreen(
                 itemsIndexed(dragState.items, key = { _, d -> d.stableKey }) { index, draggable ->
                     val slot = draggable.slot
                     val isDragging = dragState.draggedIndex == index
+                    // Lifted while held; on release it settles into its slot instead of jumping there.
+                    val lift by animateFloatAsState(if (isDragging) 1f else 0f, tween(180), label = "lift")
+                    val dragOffset by animateFloatAsState(
+                        if (isDragging) dragState.dragOffsetY else 0f,
+                        if (isDragging) snap() else spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow),
+                        label = "dragOffset"
+                    )
                     val positionLabel = if (mode != AppMode.LIST && index == 0) mainPositionLabel else stringResource(R.string.common_item_n, index + 1)
                     val dismissState = rememberSwipeToDismissBoxState(
                         confirmValueChange = { value ->
                             if (value != SwipeToDismissBoxValue.Settled) {
+                                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                                 removeWithUndo(
                                     previous = slots,
                                     updated = slots.filterIndexed { i, _ -> i != index }.mapIndexed { i, s -> s.copy(id = i) },
@@ -641,6 +668,7 @@ fun ConfigScreen(
                                         modifier = Modifier
                                             .size(24.dp)
                                             .clickable {
+                                            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                                             if (index != 0) {
                                                 val promoted = slots.toMutableList()
                                                     .also { it.add(0, it.removeAt(index)) }
@@ -663,6 +691,7 @@ fun ConfigScreen(
                                         .clickable(enabled = slot.isConfigured) {
                                             val key = slot.targetKey ?: return@clickable
                                             val wasAssigned = tileSlot == key
+                                            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                                             onTileSlotChanged(if (wasAssigned) AppConfig.TILE_NONE else key)
                                             scope.launch {
                                                 snackbarHostState.showSnackbar(
@@ -706,23 +735,27 @@ fun ConfigScreen(
                             }
                         },
                         modifier = Modifier
-                            .zIndex(if (isDragging) 1f else 0f)
+                            .zIndex(if (isDragging || lift > 0f) 1f else 0f)
                             .then(if (isDragging) Modifier else Modifier.animateItem())
                             .graphicsLayer {
-                                if (isDragging) {
-                                    translationY = dragState.dragOffsetY
-                                    scaleX = 1.03f
-                                    scaleY = 1.03f
-                                    shadowElevation = 12f
-                                }
+                                translationY = dragOffset
+                                scaleX = 1f + 0.03f * lift
+                                scaleY = 1f + 0.03f * lift
+                                shadowElevation = 12f * lift
                             }
                             .onSizeChanged { dragState.onRowSized(it.height) }
                             .pointerInput(draggable.stableKey) {
                                 detectDragGesturesAfterLongPress(
-                                    onDragStart = { dragState.onDragStart(index) },
+                                    onDragStart = {
+                                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                        dragState.onDragStart(index)
+                                    },
                                     onDragEnd = { dragState.onDragEnd(onSlotsChanged) },
                                     onDragCancel = dragState::onDragCancel,
-                                    onDrag = { change, drag -> change.consume(); dragState.onDrag(drag.y) }
+                                    onDrag = { change, drag ->
+                                        change.consume()
+                                        if (dragState.onDrag(drag.y)) view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                    }
                                 )
                             }
                             .clickable(enabled = dragState.draggedIndex < 0) { onEditSlot(slot.id) }
@@ -787,7 +820,11 @@ private fun ModeCards(currentMode: AppMode, onSelect: (AppMode) -> Unit, modifie
             Surface(
                 onClick = { onSelect(candidate) },
                 shape = MaterialTheme.shapes.medium,
-                color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                color = animateColorAsState(
+                    if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    tween(220),
+                    label = "modeCard"
+                ).value,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
@@ -829,7 +866,11 @@ private fun ModeCards(currentMode: AppMode, onSelect: (AppMode) -> Unit, modifie
                         }
                         Text(description, style = MaterialTheme.typography.bodyMedium)
                     }
-                    if (selected) {
+                    AnimatedVisibility(
+                        visible = selected,
+                        enter = fadeIn(tween(180)) + scaleIn(spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium), initialScale = 0.3f),
+                        exit = fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.3f)
+                    ) {
                         Icon(
                             Icons.Default.Check,
                             contentDescription = null,

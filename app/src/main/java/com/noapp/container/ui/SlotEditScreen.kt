@@ -1,5 +1,13 @@
 package com.noapp.container.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -122,7 +130,14 @@ fun SlotEditScreen(mode: AppMode, slot: ShortcutSlot, onSave: (ShortcutSlot) -> 
             }
 
             val sharedTextHint = stringResource(R.string.slot_edit_shared_text_hint)
-            when (type) {
+            // Switching type swaps the whole block below; a cross-fade with the height following along
+            // keeps the fields under it from jumping.
+            AnimatedContent(
+                type,
+                transitionSpec = { fadeIn(tween(220, delayMillis = 60)) togetherWith fadeOut(tween(120)) },
+                label = "slotType"
+            ) { shownType ->
+            when (shownType) {
                 SlotType.APP -> OutlinedButton(onClick = { showAppPicker = true }) {
                     Text(param.ifBlank { stringResource(R.string.slot_edit_choose_app) })
                 }
@@ -166,6 +181,7 @@ fun SlotEditScreen(mode: AppMode, slot: ShortcutSlot, onSave: (ShortcutSlot) -> 
                 }
                 null -> {}
             }
+            }
 
             Spacer(Modifier.height(16.dp))
             OutlinedTextField(
@@ -204,9 +220,14 @@ fun SlotEditScreen(mode: AppMode, slot: ShortcutSlot, onSave: (ShortcutSlot) -> 
             Row(Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ShortcutSlot.PALETTE.forEach { hex ->
                     val selected = color == hex
+                    val dot by animateDpAsState(
+                        if (selected) 36.dp else 32.dp,
+                        spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium),
+                        label = "colorDot"
+                    )
                     Box(
                         Modifier
-                            .size(if (selected) 36.dp else 32.dp)
+                            .size(dot)
                             .clip(CircleShape)
                             .background(Color(android.graphics.Color.parseColor(hex)))
                             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)

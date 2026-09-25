@@ -1,5 +1,6 @@
 package com.noapp.container.shortcuts
 
+import android.view.animation.OvershootInterpolator
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -23,6 +24,8 @@ import com.noapp.container.MainActivity
 import com.noapp.container.R
 
 private const val DISPLAY_MS = 2500L
+private const val GEAR_IN_MS = 360L
+private const val GEAR_OUT_MS = 180L
 // Matches the Settings gear glyph's actual on-screen size (Material's default 24dp Icon,
 // as seen in ConfigScreen's own Settings button) — the 40dp box this used to render at
 // filled that whole area edge-to-edge once it became a solid vector glyph instead of a
@@ -49,7 +52,12 @@ class GearOverlayService : Service() {
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
     private val handler = Handler(Looper.getMainLooper())
-    private val autoRemove = Runnable { stopSelf() }
+    // Fades and shrinks away rather than vanishing; stopSelf (and with it removeView) once it's gone.
+    private val autoRemove = Runnable {
+        val v = overlayView
+        if (v == null) stopSelf()
+        else v.animate().alpha(0f).scaleX(0.6f).scaleY(0.6f).setDuration(GEAR_OUT_MS).withEndAction { stopSelf() }
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -62,7 +70,10 @@ class GearOverlayService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (overlayView != null) {
+        overlayView?.let { v ->
+            // Asked again while it may be fading out: bring it back rather than let it go.
+            v.animate().cancel()
+            v.animate().alpha(1f).scaleX(1f).scaleY(1f).rotation(0f).setDuration(GEAR_OUT_MS)
             handler.removeCallbacks(autoRemove)
             handler.postDelayed(autoRemove, DISPLAY_MS)
             return START_NOT_STICKY
@@ -154,7 +165,14 @@ class GearOverlayService : Service() {
             y = (statusBarPx + (TOP_MARGIN_DP * density).toInt()).coerceAtMost(maxYPx)
         }
 
+        // Turns into place as it appears, like the gear at the top of the list does.
+        view.alpha = 0f
+        view.scaleX = 0.6f
+        view.scaleY = 0.6f
+        view.rotation = -120f
         runCatching { wm.addView(view, params) }.onFailure { stopSelf(); return START_NOT_STICKY }
+        view.animate().alpha(1f).scaleX(1f).scaleY(1f).rotation(0f)
+            .setDuration(GEAR_IN_MS).setInterpolator(OvershootInterpolator())
         overlayView = view
         handler.postDelayed(autoRemove, DISPLAY_MS)
         return START_NOT_STICKY

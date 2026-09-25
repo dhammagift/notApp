@@ -45,16 +45,17 @@ class SlotDragState(initial: List<ShortcutSlot>) {
         dragOffsetY = 0f
     }
 
-    fun onDrag(deltaY: Float) {
+    /** True when this step moved the row past a neighbour. */
+    fun onDrag(deltaY: Float): Boolean {
         val from = draggedIndex
-        if (from < 0 || rowHeightPx == 0) return
+        if (from < 0 || rowHeightPx == 0) return false
         dragOffsetY += deltaY
         val target = (from + (dragOffsetY / rowHeightPx).roundToInt()).coerceIn(0, items.lastIndex)
-        if (target != from) {
-            items = items.toMutableList().apply { add(target, removeAt(from)) }
-            dragOffsetY -= (target - from) * rowHeightPx
-            draggedIndex = target
-        }
+        if (target == from) return false
+        items = items.toMutableList().apply { add(target, removeAt(from)) }
+        dragOffsetY -= (target - from) * rowHeightPx
+        draggedIndex = target
+        return true
     }
 
     fun onDragEnd(onCommit: (List<ShortcutSlot>) -> Unit) {
@@ -68,9 +69,25 @@ class SlotDragState(initial: List<ShortcutSlot>) {
         dragOffsetY = 0f
     }
 
-    /** Ignored mid-drag so an external recomposition (e.g. edit-screen save) can't yank the list underfoot. */
+    /**
+     * Ignored mid-drag so an external recomposition (e.g. edit-screen save) can't yank the list underfoot.
+     *
+     * A configured slot that is still there keeps its key, so animateItem moves, adds or removes just
+     * the rows that changed instead of the whole list fading out and back in. Empty rows are all alike,
+     * so they always get fresh keys: reusing one could hand a swiped-away row's state to another.
+     */
     fun resync(slots: List<ShortcutSlot>) {
-        if (draggedIndex < 0) items = slots.map { DraggableSlot(newKey(), it) }
+        if (draggedIndex >= 0) return
+        val unclaimed = items.filter { it.slot.isConfigured }.toMutableList()
+        items = slots.map { slot ->
+            val same = if (slot.isConfigured) unclaimed.firstOrNull { it.slot.copy(id = slot.id) == slot } else null
+            if (same != null) {
+                unclaimed.remove(same)
+                DraggableSlot(same.stableKey, slot)
+            } else {
+                DraggableSlot(newKey(), slot)
+            }
+        }
     }
 }
 

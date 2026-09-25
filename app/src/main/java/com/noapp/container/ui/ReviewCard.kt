@@ -1,5 +1,9 @@
 package com.noapp.container.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -129,7 +133,10 @@ fun ReviewCard(onDismissed: () -> Unit, modifier: Modifier = Modifier) {
 fun ReviewCardIfDue(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var due by remember { mutableStateOf(ReviewStore.cardDue(context)) }
-    if (due) ReviewCard(onDismissed = { due = false }, modifier = modifier)
+    // Answering folds the card away rather than dropping it, so what's below slides up instead of jumping.
+    AnimatedVisibility(due, exit = fadeOut(tween(180)) + shrinkVertically(tween(260))) {
+        ReviewCard(onDismissed = { due = false }, modifier = modifier)
+    }
 }
 
 /** The icon the user actually sees on their home screen, whichever variant is enabled. */
