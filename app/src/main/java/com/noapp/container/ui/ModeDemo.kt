@@ -2,7 +2,9 @@ package com.noapp.container.ui
 
 import android.provider.Settings as AndroidSettings
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.exponentialDecay
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -237,6 +239,19 @@ fun ModeDemo(
                                     HeroIcon(items[0], onShowShortcuts, onOpen = { gearVisible = true })
                                 }
                                 if (gearVisible) DemoGearChip(Modifier.align(Alignment.TopEnd))
+                                if (!useAllSlotsInDirectMode) {
+                                    // Off, the mode keeps one slot for Configure; on, that slot goes to
+                                    // a real item and the gear above is the way back. Saying so here is
+                                    // the difference between "this is what Direct is" and "this is what
+                                    // it could be".
+                                    DemoOffHint(
+                                        text = stringResource(R.string.settings_use_all_slots),
+                                        onClick = { onOpenSetting(SettingsSpot.USE_ALL_SLOTS) },
+                                        modifier = Modifier
+                                            .align(Alignment.BottomEnd)
+                                            .padding(PEEK_MARGIN)
+                                    )
+                                }
                             }
                         }
 
@@ -465,39 +480,55 @@ private fun DemoSheet(
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
     // The sheet's own numbers, so the demo reacts to a swipe exactly as the sheet does.
     val collapseThresholdPx = with(density) { SHEET_DISMISS_THRESHOLD.toPx() }
     val dismissVelocityPx = with(density) { SHEET_DISMISS_VELOCITY.toPx() }
     var sheetHeightPx by remember { mutableIntStateOf(0) }
     var handleStripPx by remember { mutableIntStateOf(0) }
     var dragPx by remember { mutableFloatStateOf(0f) }
-    val settledPx by animateFloatAsState(
-        targetValue = if (collapsed) {
-            (sheetHeightPx - handleStripPx).toFloat().coerceAtLeast(0f)
-        } else {
-            0f
-        },
-        animationSpec = tween(SHEET_HIDE_MS),
-        label = "demoSheet"
-    )
+    var dragging by remember { mutableStateOf(false) }
+    val hiddenPx = (sheetHeightPx - handleStripPx).toFloat().coerceAtLeast(0f)
+    // Same shape as the real sheet's offset: an Animatable the drag offsets live, so the release can
+    // hand its velocity to the settling animation.
+    val offsetY = remember { Animatable(0f) }
+    LaunchedEffect(collapsed, hiddenPx) {
+        // The floating button opens the list, and that has to move the sheet too.
+        if (!dragging) {
+            offsetY.animateTo(if (collapsed) hiddenPx else 0f, SHEET_SPRING)
+        }
+    }
 
     Surface(
         modifier = modifier
             .heightIn(max = SHEET_MAX_HEIGHT)
             .onSizeChanged { sheetHeightPx = it.height }
-            .offset { IntOffset(0, (settledPx + dragPx).roundToInt()) }
+            .offset { IntOffset(0, (offsetY.value + dragPx).roundToInt()) }
             .draggable(
                 orientation = Orientation.Vertical,
                 // Downwards only: the sheet is already fully open, so an upward drag must do nothing.
-                state = rememberDraggableState { delta -> dragPx = (dragPx + delta).coerceAtLeast(0f) },
+                state = rememberDraggableState { delta ->
+                    dragging = true
+                    dragPx = (dragPx + delta).coerceAtLeast(0f)
+                },
                 onDragStopped = { velocity ->
+                    dragging = false
                     val moved = dragPx
+                    // No seam between dragging and animating: the base is snapped to where the sheet
+                    // actually is, and the finger's velocity carries into the settle.
+                    val base = (offsetY.value + moved).coerceIn(0f, hiddenPx)
                     dragPx = 0f
                     val flung = if (collapsed) velocity < -dismissVelocityPx else velocity > dismissVelocityPx
-                    onCollapsedChange(
-                        if (collapsed) moved < -collapseThresholdPx || flung
-                        else moved > collapseThresholdPx || flung
-                    )
+                    val shouldCollapse = if (collapsed) {
+                        moved < -collapseThresholdPx || flung
+                    } else {
+                        moved > collapseThresholdPx || flung
+                    }
+                    scope.launch {
+                        offsetY.snapTo(base)
+                        onCollapsedChange(shouldCollapse)
+                        offsetY.animateTo(if (shouldCollapse) hiddenPx else 0f, SHEET_SPRING, initialVelocity = velocity)
+                    }
                 }
             ),
         shape = RoundedCornerShape(topStart = SHEET_CORNER, topEnd = SHEET_CORNER),
@@ -1160,8 +1191,8 @@ private val PLACEHOLDER_COLORS = listOf(
     "#8B8D91"
 )
 
-/** Matches QuickPickSheet's ENTER_EXIT_ANIM_MS. */
-private const val SHEET_HIDE_MS = 260
+/** The same settle the real sheet uses: a spring, so the drag's velocity counts. */
+private val SHEET_SPRING = spring<Float>(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)
 private const val PLACEHOLDER_ROWS = 5
 private const val SHORTCUT_MENU_ROWS = 4
 private const val SCRIM_ALPHA = 0.32f

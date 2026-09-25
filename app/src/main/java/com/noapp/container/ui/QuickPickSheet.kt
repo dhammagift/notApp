@@ -5,6 +5,8 @@ import android.content.Intent
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -76,6 +78,12 @@ import kotlin.math.roundToInt
 
 private const val ENTER_EXIT_ANIM_MS = 260
 
+/**
+ * Settling uses a spring rather than a fixed-duration tween so the drag's velocity can carry into the
+ * animation — a tween ignores it, which is what made a flick feel like it was put down by someone else.
+ */
+private val SHEET_SPRING = spring<Float>(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)
+
 /** A sheet is a phone-shaped thing: on a landscape screen it keeps that width, centred. */
 private val SHEET_MAX_WIDTH = 420.dp
 private const val DISMISS_DRAG_THRESHOLD_DP = 100
@@ -135,11 +143,13 @@ fun QuickPickSheet(
 
     LaunchedEffect(Unit) { offsetY.animateTo(0f, tween(ENTER_EXIT_ANIM_MS)) }
 
-    fun requestDismiss() {
+    fun requestDismiss(velocity: Float = 0f) {
         if (dismissed) return
         dismissed = true
         scope.launch {
-            offsetY.animateTo(offScreenPx, tween(ENTER_EXIT_ANIM_MS))
+            // The release velocity is handed to the animation, so a flicked-away sheet leaves at the
+            // speed it was flicked at instead of at whatever a fixed duration implies.
+            offsetY.animateTo(offScreenPx, SHEET_SPRING, initialVelocity = velocity)
             when {
                 !allowPeek -> onDismiss()
                 // Preferred path: a real system overlay that keeps showing over
@@ -204,9 +214,9 @@ fun QuickPickSheet(
                         dragOffset = 0f
                         offsetY.snapTo(settled)
                         if (settled > dismissThresholdPx || velocity > dismissVelocityPx) {
-                            requestDismiss()
+                            requestDismiss(velocity)
                         } else {
-                            offsetY.animateTo(0f, tween(200))
+                            offsetY.animateTo(0f, SHEET_SPRING, initialVelocity = velocity)
                         }
                     }
                 )

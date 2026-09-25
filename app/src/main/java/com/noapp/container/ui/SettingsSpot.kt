@@ -9,5 +9,6 @@ package com.noapp.container.ui
  */
 enum class SettingsSpot {
     RECENT_APPS,
-    FLOATING_BUTTON
+    FLOATING_BUTTON,
+    USE_ALL_SLOTS
 }

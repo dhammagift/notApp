@@ -149,6 +149,7 @@ fun SettingsScreen(
     // Where the two rows worth pointing at sit, so the screen can scroll to one of them.
     var recentAppsY by remember { mutableIntStateOf(0) }
     var floatingButtonY by remember { mutableIntStateOf(0) }
+    var useAllSlotsY by remember { mutableIntStateOf(0) }
     var flashing by remember { mutableStateOf(false) }
 
     // Wait a frame: the offsets above are only known after the first layout pass, and the screen is
@@ -156,11 +157,12 @@ fun SettingsScreen(
     LaunchedEffect(spotlight) {
         val spot = spotlight ?: return@LaunchedEffect
         delay(120)
-        scrollState.animateScrollTo(
-            (if (spot == SettingsSpot.RECENT_APPS) recentAppsY else floatingButtonY)
-                .minus(SPOTLIGHT_TOP_MARGIN_PX)
-                .coerceAtLeast(0)
-        )
+        val rowY = when (spot) {
+            SettingsSpot.RECENT_APPS -> recentAppsY
+            SettingsSpot.FLOATING_BUTTON -> floatingButtonY
+            SettingsSpot.USE_ALL_SLOTS -> useAllSlotsY
+        }
+        scrollState.animateScrollTo((rowY - SPOTLIGHT_TOP_MARGIN_PX).coerceAtLeast(0))
         flashing = true
         delay(SPOTLIGHT_MS)
         flashing = false
@@ -370,6 +372,9 @@ fun SettingsScreen(
             // Settings doesn't change shape as you switch modes — each one's own copy says which
             // mode(s) it works in instead.
             ListItem(
+                modifier = Modifier
+                    .onGloballyPositioned { useAllSlotsY = it.positionInParent().y.toInt() }
+                    .background(spotlightFlash(spotlight == SettingsSpot.USE_ALL_SLOTS && flashing)),
                 headlineContent = { Text(stringResource(R.string.settings_use_all_slots)) },
                 supportingContent = {
                     Text(
