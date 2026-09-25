@@ -93,6 +93,7 @@
     <string name="mode_demo_normal">Shortcut list</string>
     <string name="mode_demo_share_text">https://dhamma.gift</string>
     <string name="mode_demo_pill_hint">No "draw over other apps" permission: the button lives only inside the app</string>
+    <string name="mode_demo_label">Demo — try me</string>
     <string name="mode_demo_share_hint">This is how I am picked from the Share menu of any app: whatever you share lands in this list</string>
     <string name="mode_demo_enable_in_settings">Turn on in Settings</string>
     <string name="mode_demo_long_press">Hold the icon — shortcut menu</string>
