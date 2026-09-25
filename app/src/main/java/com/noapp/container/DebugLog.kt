@@ -42,6 +42,12 @@ object DebugLog {
     fun read(context: Context): String =
         runCatching { executor.submit<String> { file(context).readText() }.get() }.getOrDefault("")
 
+    /** The log used to live in external storage, which other apps can read on Android 7-9. */
+    fun deleteLegacyExternalFile(context: Context) {
+        val appContext = context.applicationContext
+        executor.execute { runCatching { File(appContext.getExternalFilesDir(null), FILE_NAME).delete() } }
+    }
+
     fun clear(context: Context) {
         executor.execute { runCatching { file(context).delete() } }
     }
