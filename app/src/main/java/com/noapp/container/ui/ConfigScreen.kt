@@ -16,6 +16,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -87,10 +88,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -330,6 +334,21 @@ private fun ModePickerDialog(
     }
 }
 
+/** The enabled launcher icon, so the row reads as "this is about the icon on your home screen". */
+@Composable
+private fun LauncherIconSmall() {
+    val context = LocalContext.current
+    val sizePx = with(LocalDensity.current) { 32.dp.roundToPx() }
+    val bitmap = remember(sizePx) {
+        runCatching {
+            context.packageManager.getActivityIcon(enabledLauncherComponent(context)).toBitmap(sizePx, sizePx)
+        }.getOrNull()?.asImageBitmap()
+    }
+    if (bitmap != null) {
+        Image(bitmap = bitmap, contentDescription = null, modifier = Modifier.size(32.dp))
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConfigScreen(
@@ -355,6 +374,9 @@ fun ConfigScreen(
 ) {
     var showFillDialog by remember { mutableStateOf(false) }
     var fabExpanded by remember { mutableStateOf(false) }
+    // Hoisted out of the toolbar: the list's own footer opens the same picker, and that is the only
+    // way to see the demo without going through a mode you do not want to change.
+    var modeDialogVisible by remember { mutableStateOf(false) }
     val dragState = rememberSlotDragState(slots)
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -407,7 +429,6 @@ fun ConfigScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
-                    var modeDialogVisible by remember { mutableStateOf(false) }
                     AssistChip(
                         onClick = { modeDialogVisible = true },
                         label = { Text(stringResource(mode.labelRes())) }
@@ -670,6 +691,18 @@ fun ConfigScreen(
                     )
                 }
                 HorizontalDivider()
+            }
+            // The list ends a long way above the bottom of the screen, and this is the one thing worth
+            // putting there: a way to see what the mode you are on actually does, without changing it.
+            item(key = "demo") {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.config_demo_entry)) },
+                    supportingContent = { Text(stringResource(R.string.config_demo_hint)) },
+                    leadingContent = { LauncherIconSmall() },
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .clickable { modeDialogVisible = true }
+                )
             }
         }
     }

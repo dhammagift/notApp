@@ -91,6 +91,9 @@
     <string name="mode_demo_long_press">Удержите иконку — меню шорткатов</string>
     <string name="mode_demo_shortcuts_title">Меню шорткатов</string>
     <string name="mode_demo_direct_opens">Откроется сразу: %1$s</string>
+    <string name="config_demo_entry">Как работает выбранный режим</string>
+    <string name="config_demo_hint">Демо: список, плавающая кнопка и меню по долгому нажатию — на ваших ярлыках. Ничего не открывается.</string>
+    <string name="mode_demo_opened">Открыто: %1$s</string>
     <string name="config_mode_dialog_title">Выбор режима</string>
     <string name="config_mode_list_desc">Я открываю список ярлыков. А если долго удержите мою иконку — сразу покажу первые 4 ярлыка как шорткаты.</string>
     <string name="config_mode_direct_desc">Я сразу открываю первый ярлык.</string>

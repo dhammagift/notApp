@@ -46,7 +46,7 @@ data class AppConfig(
     // own (see QuickPickPeekOverlayService), so one control covers both states.
     val peekBubbleAlpha: Float = 0.9f,
     // Fraction of the floating button left visible when tucked into a screen edge.
-    val peekBubbleDockPeek: Float = 0.375f,
+    val peekBubbleDockPeek: Float = 0.5f,
     // LIST/MIX only, off by default (needs the user to separately grant Usage Access):
     // shows a compact icon-only row of recently-used apps above the configured items —
     // see recents/RecentApps.kt.

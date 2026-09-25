@@ -93,6 +93,9 @@
     <string name="mode_demo_long_press">Hold the icon — shortcut menu</string>
     <string name="mode_demo_shortcuts_title">Shortcut menu</string>
     <string name="mode_demo_direct_opens">Opens right away: %1$s</string>
+    <string name="config_demo_entry">How the chosen mode works</string>
+    <string name="config_demo_hint">A demo: the list, the floating button and the long-press menu, on your own items. Nothing opens.</string>
+    <string name="mode_demo_opened">Opened: %1$s</string>
     <string name="config_mode_dialog_title">Choose mode</string>
     <string name="config_mode_list_desc">I open the shortcut list. Long-press my icon and I\'ll show you the first 4 items as shortcuts right away.</string>
     <string name="config_mode_direct_desc">I launch your first item right away.</string>

@@ -70,6 +70,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -96,6 +97,7 @@ import com.noapp.container.model.ShortcutSlot
 import com.noapp.container.recents.RecentApp
 import com.noapp.container.recents.RecentApps
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.PI
@@ -192,14 +194,28 @@ fun ModeDemo(
                                 .fillMaxWidth()
                         )
 
-                        AppMode.DIRECT -> Column(
-                            Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            DemoHint()
-                            Spacer(Modifier.height(8.dp))
-                            HeroIcon(items[0], onShowShortcuts)
+                        AppMode.DIRECT -> {
+                            // The gear the app flashes over whatever Direct launched — it needs no
+                            // toggle, and with "Use all shortcut slots" on it is the only way back.
+                            var gearVisible by remember { mutableStateOf(false) }
+                            LaunchedEffect(gearVisible) {
+                                if (gearVisible) {
+                                    delay(GEAR_DISPLAY_MS)
+                                    gearVisible = false
+                                }
+                            }
+                            Box(Modifier.fillMaxSize()) {
+                                Column(
+                                    Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    DemoHint()
+                                    Spacer(Modifier.height(8.dp))
+                                    HeroIcon(items[0], onShowShortcuts, onOpen = { gearVisible = true })
+                                }
+                                if (gearVisible) DemoGearChip(Modifier.align(Alignment.TopEnd))
+                            }
                         }
 
                         // The icon the mode would launch first, then the list of the rest under it.
@@ -636,15 +652,20 @@ fun ShortcutMenuOverlay(
 private fun HeroIcon(
     target: ShortcutSlot,
     onShowShortcuts: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onOpen: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     val burst = remember { Animatable(1f) }
     // The kick at the start of the burst, so the icon itself reacts to the tap.
     val pop = 1f + 0.12f * (1f - burst.value).coerceIn(0f, 1f)
+    // While it plays, the line under the icon says what the tap did: a firework on its own left it
+    // open to question what had just opened. The animation is finite, so this always resets itself —
+    // and the whole thing is keyed by mode, so switching modes starts clean.
+    val opened = burst.value < 1f
 
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(HERO_ICON * 2f), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(HERO_ICON * 2.8f), contentAlignment = Alignment.Center) {
             if (burst.value < 1f) {
                 Canvas(Modifier.matchParentSize()) { firework(burst.value) }
             }
@@ -657,6 +678,7 @@ private fun HeroIcon(
                     .pointerInput(target) {
                         detectTapGestures(
                             onTap = {
+                                onOpen()
                                 scope.launch {
                                     burst.snapTo(0f)
                                     burst.animateTo(1f, tween(FIREWORK_MS, easing = LinearEasing))
@@ -673,33 +695,82 @@ private fun HeroIcon(
             Modifier.padding(top = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            DemoIcon(target, target.id + 1, 24.dp)
-            Spacer(Modifier.width(8.dp))
-            Text(
-                stringResource(R.string.mode_demo_direct_opens, labelOf(target, target.id + 1)),
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.92f)
-            )
+            if (opened) {
+                Text(
+                    "\u2713",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = OPENED_CHECK
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    stringResource(R.string.mode_demo_opened, labelOf(target, target.id + 1)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White
+                )
+            } else {
+                DemoIcon(target, target.id + 1, 24.dp)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    stringResource(R.string.mode_demo_direct_opens, labelOf(target, target.id + 1)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.92f)
+                )
+            }
         }
+    }
+}
+
+/**
+ * The Configure gear Direct flashes over the app it just launched: a 32dp dark scrim with the same
+ * 24dp glyph, 12dp in from the top end, gone again after the same 2.5s. Drawn, not tappable — in the
+ * demo there is nothing underneath it to come back from.
+ */
+@Composable
+private fun DemoGearChip(modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .padding(GEAR_MARGIN)
+            .size(GEAR_SCRIM)
+            .background(GEAR_SCRIM_COLOR, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            painterResource(R.drawable.ic_settings_gear),
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(GEAR_ICON)
+        )
     }
 }
 
 /** Sparks thrown outwards from the icon: the demo's version of "this is what a tap does". */
 private fun DrawScope.firework(progress: Float) {
     val center = size.center
-    val reach = size.minDimension / 2f * 0.92f
-    val distance = reach * (0.2f + 0.8f * progress)
+    val reach = size.minDimension / 2f
     val alpha = (1f - progress).coerceIn(0f, 1f)
-    val radius = 3.5.dp.toPx() * (1f - progress * 0.5f)
-    for (index in 0 until FIREWORK_COLORS.size * 3) {
-        val angle = (index * 2.0 * PI / (FIREWORK_COLORS.size * 3)).toFloat()
+    val dot = 5.dp.toPx() * (1f - progress * 0.45f)
+    val sparks = FIREWORK_COLORS.size * 5
+    for (index in 0 until sparks) {
+        val angle = (index * 2.0 * PI / sparks).toFloat()
+        // Two shells: an inner one that lands early and an outer one that carries further, which is
+        // what makes it read as a burst rather than dots on a circle.
+        val shell = if (index % 2 == 0) 0.62f else 1f
+        val distance = reach * shell * (0.25f + 0.75f * progress)
         drawCircle(
             color = FIREWORK_COLORS[index % FIREWORK_COLORS.size],
-            radius = radius,
+            radius = dot,
             center = Offset(center.x + cos(angle) * distance, center.y + sin(angle) * distance),
             alpha = alpha
         )
     }
+    // The thin ring left behind by the outer shell.
+    drawCircle(
+        color = FIREWORK_COLORS.first(),
+        radius = reach * (0.3f + 0.7f * progress),
+        center = center,
+        style = Stroke(width = 2.dp.toPx()),
+        alpha = alpha * 0.5f
+    )
 }
 
 /** The enabled launcher icon, straight from PackageManager — the one on the home screen. */
@@ -845,7 +916,15 @@ private val FIREWORK_COLORS = listOf(
     Color(0xFF06D6A0),
     Color(0xFFA175F0)
 )
-private const val FIREWORK_MS = 650
+private const val FIREWORK_MS = 900
+
+/** Straight from GearOverlayService: same scrim, glyph, inset and display time. */
+private val GEAR_SCRIM = 32.dp
+private val GEAR_ICON = 24.dp
+private val GEAR_MARGIN = 12.dp
+private val GEAR_SCRIM_COLOR = Color(0xAA000000)
+private const val GEAR_DISPLAY_MS = 2500L
+private val OPENED_CHECK = Color(0xFF06D6A0)
 
 /** The same glyph and colour ShortcutSync paints on the reserved Configure shortcut. */
 private const val CONFIGURE_GLYPH = "\u2699"
