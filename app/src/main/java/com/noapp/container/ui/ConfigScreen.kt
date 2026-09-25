@@ -385,6 +385,8 @@ fun ConfigScreen(
     onEditSlot: (Int) -> Unit,
     onAddSlot: (SlotType) -> Unit,
     onOpenSettings: (SettingsSpot?) -> Unit,
+    // Used by everything inside the mode picker: those trips have to come back to the picker.
+    onOpenSettingsFromDemo: (SettingsSpot?) -> Unit,
     onModeChanged: (AppMode) -> Unit,
     onSlotsChanged: (List<ShortcutSlot>) -> Unit,
     // AppConfig.tileSlot: which row's rocket marker is lit, and the only way to move it.
