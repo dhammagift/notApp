@@ -338,6 +338,10 @@ private fun ModePickerDialog(
                         mode = currentMode,
                         slots = slots,
                         useAllSlotsInDirectMode = useAllSlotsInDirectMode,
+                        onOpenSettings = {
+                            shortcutsShown = false
+                            onOpenSetting(null)
+                        },
                         onDismiss = { shortcutsShown = false }
                     )
                 }
@@ -373,6 +377,9 @@ fun ConfigScreen(
     peekBubbleAlpha: Float,
     peekBubbleDockPeek: Float,
     peekBubbleReturns: Boolean,
+    // Set when the user is coming back from Settings they reached through this demo.
+    openPickerOnStart: Boolean,
+    onPickerOpened: () -> Unit,
     hint: UiHint?,
     onHintShown: (UiHint) -> Unit,
     onEditSlot: (Int) -> Unit,
@@ -389,6 +396,13 @@ fun ConfigScreen(
     // Hoisted out of the toolbar: the list's own footer opens the same picker, and that is the only
     // way to see the demo without going through a mode you do not want to change.
     var modeDialogVisible by remember { mutableStateOf(false) }
+    // Coming back from Settings: reopen the picker on the mode they were looking at.
+    LaunchedEffect(openPickerOnStart) {
+        if (openPickerOnStart) {
+            modeDialogVisible = true
+            onPickerOpened()
+        }
+    }
     val dragState = rememberSlotDragState(slots)
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()

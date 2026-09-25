@@ -480,6 +480,9 @@ private fun NoAppRoot(
 
     // Which Settings row to scroll to and flash, set when something else sends the user here.
     var settingsSpotlight by remember { mutableStateOf<SettingsSpot?>(null) }
+    // True when the user arrived in Settings from the picker's demo: Back then has to land back in
+    // that demo rather than on the item list, because that is where they were.
+    var pickerAfterSettings by remember { mutableStateOf(false) }
 
     when (screen) {
         is Screen.Config -> ConfigScreen(
@@ -492,12 +495,15 @@ private fun NoAppRoot(
             peekBubbleAlpha = peekBubbleAlpha,
             peekBubbleDockPeek = peekBubbleDockPeek,
             peekBubbleReturns = peekBubbleReturns,
+            openPickerOnStart = pickerAfterSettings,
+            onPickerOpened = { pickerAfterSettings = false },
             hint = hint,
             onHintShown = onHintShown,
             onEditSlot = { index -> onScreenChange(Screen.EditSlot(index)) },
             onAddSlot = { type -> onScreenChange(Screen.NewSlot(type)) },
             onOpenSettings = { spot ->
                 settingsSpotlight = spot
+                pickerAfterSettings = spot != null
                 onScreenChange(Screen.Settings)
             },
             onModeChanged = onModeChanged,

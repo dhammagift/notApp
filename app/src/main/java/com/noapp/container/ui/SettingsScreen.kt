@@ -123,8 +123,9 @@ private fun spotlightFlash(on: Boolean): Color {
     return MaterialTheme.colorScheme.primaryContainer.copy(alpha = alpha)
 }
 
-private const val SPOTLIGHT_MS = 2600L
-private const val SPOTLIGHT_FADE_MS = 350
+private const val SPOTLIGHT_ON_MS = 320L
+private const val SPOTLIGHT_OFF_MS = 220L
+private const val SPOTLIGHT_FADE_MS = 120
 private const val SPOTLIGHT_TOP_MARGIN_PX = 220
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -168,9 +169,14 @@ fun SettingsScreen(
             SettingsSpot.USE_ALL_SLOTS -> useAllSlotsY
         }
         scrollState.animateScrollTo((rowY - SPOTLIGHT_TOP_MARGIN_PX).coerceAtLeast(0))
-        flashing = true
-        delay(SPOTLIGHT_MS)
-        flashing = false
+        // Two blinks rather than one steady wash: a row that stays tinted reads as a permanently
+        // selected item, which is not what this is.
+        repeat(2) {
+            flashing = true
+            delay(SPOTLIGHT_ON_MS)
+            flashing = false
+            delay(SPOTLIGHT_OFF_MS)
+        }
         onSpotlightShown()
     }
 

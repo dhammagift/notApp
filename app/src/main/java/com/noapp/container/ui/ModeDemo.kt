@@ -848,6 +848,7 @@ fun ShortcutMenuOverlay(
     mode: AppMode,
     slots: List<ShortcutSlot>,
     useAllSlotsInDirectMode: Boolean,
+    onOpenSettings: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val configured = slots.filter { it.isConfigured }
@@ -905,6 +906,13 @@ fun ShortcutMenuOverlay(
                 Spacer(Modifier.height(4.dp))
                 entries.take(SHORTCUT_MENU_ROWS).forEach { slot ->
                     ListItem(
+                        // The Configure entry is a real way in, exactly as it is in the launcher's
+                        // menu: tapping it goes to Settings.
+                        modifier = if (slot == null) {
+                            Modifier.clickable { onOpenSettings() }
+                        } else {
+                            Modifier
+                        },
                         headlineContent = {
                             Text(
                                 if (slot == null) {
