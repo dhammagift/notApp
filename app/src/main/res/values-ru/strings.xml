@@ -87,6 +87,10 @@
     <string name="config_mode_list_choice">☰ Список ~ как папка</string>
     <string name="config_mode_direct_choice">▶ Прямой = приложение №1 + шорткаты</string>
     <string name="config_mode_mix_choice">◫ Микс = Прямой + Список</string>
+    <string name="mode_demo_share">Отправка</string>
+    <string name="mode_demo_normal">Список ярлыков</string>
+    <string name="mode_demo_share_text">https://dhamma.gift</string>
+    <string name="mode_demo_pill_hint">Нет разрешения «поверх других окон»: кнопка живёт только внутри приложения</string>
     <string name="mode_demo_label">Демо — попробуйте меня</string>
     <string name="mode_demo_long_press">Удержите иконку — меню шорткатов</string>
     <string name="mode_demo_shortcuts_title">Меню шорткатов</string>

@@ -1,6 +1,8 @@
 package com.noapp.container.ui
 
+import android.provider.Settings as AndroidSettings
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -38,6 +40,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -55,12 +58,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -166,9 +171,22 @@ fun ModeDemo(
             val panelWidth = maxWidth
             val panelHeight = maxHeight
             DemoLabel()
+            if (mode != AppMode.DIRECT) {
+                DemoCaseSwitch(
+                    shareCase = shareCase,
+                    onChange = { shareCase = it },
+                    modifier = Modifier.align(Alignment.TopEnd)
+                )
+            }
             // Keyed on the mode: switching modes must show the new example expanded, not the state
             // the previous one was left in (a sheet collapsed to its handle, say).
-            // "Bring the button back after ✕": on, the button returns the next time the list is
+            // The share sheet is the same list with a "send to" line and no floating button at all
+    // (allowPeek is off for it), and it exists in every mode but DIRECT. Declared here so it survives
+    // a mode switch: comparing the two is the whole point of the switch.
+    var shareCase by remember { mutableStateOf(false) }
+    val canOverlay = AndroidSettings.canDrawOverlays(context)
+
+    // "Bring the button back after ✕": on, the button returns the next time the list is
             // opened here (a mode switch, in the demo); off, it stays gone for the rest of this
             // picker. The app persists that across openings, which a demo must not do — it never
             // writes the user's settings.
@@ -186,6 +204,7 @@ fun ModeDemo(
                             items = items,
                             startNumber = 1,
                             recentApps = recentApps,
+                            sharedText = if (shareCase) stringResource(R.string.mode_demo_share_text) else null,
                             collapsed = collapsed,
                             onCollapsedChange = { collapsed = it },
                             modifier = Modifier
@@ -237,6 +256,7 @@ fun ModeDemo(
                                 items = items.drop(1),
                                 startNumber = 2,
                                 recentApps = recentApps,
+                                sharedText = if (shareCase) stringResource(R.string.mode_demo_share_text) else null,
                                 collapsed = collapsed,
                                 onCollapsedChange = { collapsed = it },
                                 modifier = Modifier
@@ -254,7 +274,13 @@ fun ModeDemo(
                     }
                     // The floating button only exists in LIST and MIX (that is what the setting says)
                     // and only while the list is down, exactly as in the app.
-                    if (showPeekBubble && mode != AppMode.DIRECT && collapsed && !bubbleGone) {
+                    // The share sheet never peeks (allowPeek is off for it), and without the overlay
+                    // permission the app falls back to a button in its own window — both cases are
+                    // drawn here rather than described.
+                    val showButton = showPeekBubble && mode != AppMode.DIRECT && collapsed && !bubbleGone && !shareCase
+                    if (showButton && !canOverlay) {
+                        DemoPeekPill(onOpen = { collapsed = false })
+                    } else if (showButton) {
                         DemoPeekBubble(
                             panelWidth = panelWidth,
                             panelHeight = panelHeight,
@@ -270,6 +296,86 @@ fun ModeDemo(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * The two shapes the list has in the app: the shortcut list, and the share sheet — same sheet, plus a
+ * "send to" line and no floating button, because sharing never peeks.
+ */
+@Composable
+private fun BoxScope.DemoCaseSwitch(
+    shareCase: Boolean,
+    onChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier.padding(end = 12.dp, top = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        DemoCaseChip(stringResource(R.string.mode_demo_normal), selected = !shareCase) { onChange(false) }
+        DemoCaseChip(stringResource(R.string.mode_demo_share), selected = shareCase) { onChange(true) }
+    }
+}
+
+@Composable
+private fun DemoCaseChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Text(
+        label,
+        style = MaterialTheme.typography.labelSmall,
+        color = if (selected) {
+            MaterialTheme.colorScheme.onSecondaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(
+                if (selected) {
+                    MaterialTheme.colorScheme.secondaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surface.copy(alpha = 0.75f)
+                }
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 10.dp, vertical = 5.dp)
+    )
+}
+
+/**
+ * What the app falls back to when "draw over other apps" was never granted: the same round button, but
+ * inside its own window (QuickPickSheet's PeekPill), so it cannot be dragged or parked on an edge and
+ * it vanishes with the app. Drawn here with the note that explains the difference.
+ */
+@Composable
+private fun BoxScope.DemoPeekPill(onOpen: () -> Unit) {
+    Column(
+        Modifier.align(Alignment.BottomEnd).padding(PEEK_MARGIN),
+        horizontalAlignment = Alignment.End
+    ) {
+        Text(
+            stringResource(R.string.mode_demo_pill_hint),
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White,
+            modifier = Modifier
+                .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(50))
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+        )
+        Spacer(Modifier.height(8.dp))
+        Box(
+            Modifier
+                .size(PEEK_BUBBLE)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer)
+                .clickable { onOpen() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Menu,
+                contentDescription = stringResource(R.string.quick_pick_reopen_desc),
+                tint = MaterialTheme.colorScheme.onPrimaryContainer
+            )
         }
     }
 }
@@ -306,12 +412,15 @@ private fun DemoSheet(
     items: List<ShortcutSlot>,
     startNumber: Int,
     recentApps: List<RecentApp>,
+    sharedText: String?,
     collapsed: Boolean,
     onCollapsedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
-    val collapseThresholdPx = with(density) { COLLAPSE_THRESHOLD.toPx() }
+    // The sheet's own numbers, so the demo reacts to a swipe exactly as the sheet does.
+    val collapseThresholdPx = with(density) { SHEET_DISMISS_THRESHOLD.toPx() }
+    val dismissVelocityPx = with(density) { SHEET_DISMISS_VELOCITY.toPx() }
     var sheetHeightPx by remember { mutableIntStateOf(0) }
     var handleStripPx by remember { mutableIntStateOf(0) }
     var dragPx by remember { mutableFloatStateOf(0f) }
@@ -321,7 +430,7 @@ private fun DemoSheet(
         } else {
             0f
         },
-        animationSpec = tween(COLLAPSE_ANIM_MS),
+        animationSpec = tween(SHEET_HIDE_MS),
         label = "demoSheet"
     )
 
@@ -334,11 +443,13 @@ private fun DemoSheet(
                 orientation = Orientation.Vertical,
                 // Downwards only: the sheet is already fully open, so an upward drag must do nothing.
                 state = rememberDraggableState { delta -> dragPx = (dragPx + delta).coerceAtLeast(0f) },
-                onDragStopped = {
+                onDragStopped = { velocity ->
                     val moved = dragPx
                     dragPx = 0f
+                    val flung = if (collapsed) velocity < -dismissVelocityPx else velocity > dismissVelocityPx
                     onCollapsedChange(
-                        if (collapsed) moved < -collapseThresholdPx else moved > collapseThresholdPx
+                        if (collapsed) moved < -collapseThresholdPx || flung
+                        else moved > collapseThresholdPx || flung
                     )
                 }
             ),
@@ -385,6 +496,13 @@ private fun DemoSheet(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+            }
+            if (sharedText != null) {
+                Text(
+                    stringResource(R.string.quick_pick_send_to, sharedText),
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                )
             }
             if (recentApps.isNotEmpty()) HorizontalDivider()
             // fill = false is what keeps the sheet content-sized: the list takes its own height when
@@ -444,6 +562,8 @@ private fun BoxScope.DemoPeekBubble(
     }
     var dockedSide by remember { mutableIntStateOf(0) }
     var dragging by remember { mutableStateOf(false) }
+    var fling by remember { mutableStateOf(Offset.Zero) }
+    var lastSampleAt by remember { mutableLongStateOf(0L) }
     val trashCenterX = panelWidthPx / 2
     val trashCenterY = panelHeightPx - with(density) { TRASH_BOTTOM_MARGIN.toPx() } -
         with(density) { TRASH_SIZE.toPx() } / 2
@@ -509,22 +629,41 @@ private fun BoxScope.DemoPeekBubble(
                     },
                     onDragEnd = {
                         dragging = false
-                        val dropped = position.value
-                        when {
-                            overTrashAt(dropped) -> onRemove()
-                            dropped.x <= dockZonePx -> {
-                                dockedSide = -1
-                                scope.launch { position.animateTo(Offset(dockedX(-1), dropped.y), tween(DOCK_ANIM_MS.toInt())) }
-                            }
-                            dropped.x >= panelWidthPx - sizePx - dockZonePx -> {
-                                dockedSide = 1
-                                scope.launch { position.animateTo(Offset(dockedX(1), dropped.y), tween(DOCK_ANIM_MS.toInt())) }
+                        if (overTrashAt(position.value)) {
+                            onRemove()
+                        } else {
+                            scope.launch {
+                                // The app's own momentum: a fling carries the button on, decelerating,
+                                // and only where it comes to rest decides the docking — see
+                                // QuickPickPeekOverlayService's settle().
+                                if (fling.getDistance() > FLING_MIN_VELOCITY) {
+                                    position.animateDecay(fling, exponentialDecay())
+                                }
+                                val settled = clamped(position.value)
+                                position.snapTo(settled)
+                                val side = when {
+                                    settled.x <= dockZonePx -> -1
+                                    settled.x >= panelWidthPx - sizePx - dockZonePx -> 1
+                                    else -> 0
+                                }
+                                dockedSide = side
+                                if (side != 0) {
+                                    position.animateTo(
+                                        Offset(dockedX(side), settled.y),
+                                        tween(DOCK_ANIM_MS.toInt())
+                                    )
+                                }
                             }
                         }
                     },
                     onDragCancel = { dragging = false },
                     onDrag = { change, delta ->
                         change.consume()
+                        // Pixels per second from the last two samples: enough to hand the fling the
+                        // speed the finger actually left behind.
+                        val dt = (change.uptimeMillis - lastSampleAt).coerceAtLeast(1L)
+                        fling = delta * (1000f / dt)
+                        lastSampleAt = change.uptimeMillis
                         scope.launch { position.snapTo(clamped(position.value + delta)) }
                     }
                 )
@@ -869,7 +1008,9 @@ private fun DrawScope.brandWallpaper(mark: Painter) {
 
 private val DEMO_PADDING = 8.dp
 private val HERO_ICON = 104.dp
-private val COLLAPSE_THRESHOLD = 40.dp
+/** The sheet's own dismissal numbers (QuickPickSheet): same threshold, same fling speed. */
+private val SHEET_DISMISS_THRESHOLD = 100.dp
+private val SHEET_DISMISS_VELOCITY = 1000.dp
 private val SHEET_CORNER = 22.dp
 private val MIX_SHEET_INSET = 24.dp
 
@@ -893,6 +1034,7 @@ private val TRASH_SNAP = 72.dp
 /** Straight from QuickPickPeekOverlayService: the same edge zone, scale and fade when docked. */
 private val DOCK_ZONE = 28.dp
 private const val DOCK_ANIM_MS = 300L
+private const val FLING_MIN_VELOCITY = 50f
 private const val DOCK_SCALE = 0.9f
 private const val DOCK_ALPHA_FACTOR = 0.6f
 private val PEEK_COLOR = Color(0xCC3C4043)
@@ -941,7 +1083,8 @@ private val PLACEHOLDER_COLORS = listOf(
     "#8B8D91"
 )
 
-private const val COLLAPSE_ANIM_MS = 220
+/** Matches QuickPickSheet's ENTER_EXIT_ANIM_MS. */
+private const val SHEET_HIDE_MS = 260
 private const val PLACEHOLDER_ROWS = 5
 private const val SHORTCUT_MENU_ROWS = 4
 private const val SCRIM_ALPHA = 0.32f
