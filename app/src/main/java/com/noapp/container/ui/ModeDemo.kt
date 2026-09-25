@@ -138,7 +138,7 @@ fun ModeDemo(
     peekBubbleAlpha: Float,
     peekBubbleDockPeek: Float,
     peekBubbleReturns: Boolean,
-    onOpenSetting: (SettingsSpot) -> Unit,
+    onOpenSetting: (SettingsSpot?) -> Unit,
     narrowSheet: Boolean,
     onShowShortcuts: () -> Unit,
     modifier: Modifier = Modifier
@@ -222,6 +222,7 @@ fun ModeDemo(
                             recentApps = recentApps,
                             recentsOff = !showRecentApps,
                             onEnableRecents = { onOpenSetting(SettingsSpot.RECENT_APPS) },
+                            onOpenSettings = { onOpenSetting(null) },
                             sharedText = if (shareCase) stringResource(R.string.mode_demo_share_text) else null,
                             collapsed = collapsed,
                             onCollapsedChange = { collapsed = it },
@@ -251,7 +252,12 @@ fun ModeDemo(
                                     Spacer(Modifier.height(8.dp))
                                     HeroIcon(items[0], onShowShortcuts, onOpen = { gearVisible = true })
                                 }
-                                if (gearVisible) DemoGearChip(Modifier.align(Alignment.TopEnd))
+                                if (gearVisible) {
+                                    DemoGearChip(
+                                        onClick = { onOpenSetting(null) },
+                                        modifier = Modifier.align(Alignment.TopEnd)
+                                    )
+                                }
                                 if (!useAllSlotsInDirectMode) {
                                     // Off, the mode keeps one slot for Configure; on, that slot goes to
                                     // a real item and the gear above is the way back. Saying so here is
@@ -289,6 +295,7 @@ fun ModeDemo(
                                 recentApps = recentApps,
                                 recentsOff = !showRecentApps,
                                 onEnableRecents = { onOpenSetting(SettingsSpot.RECENT_APPS) },
+                                onOpenSettings = { onOpenSetting(null) },
                                 sharedText = if (shareCase) stringResource(R.string.mode_demo_share_text) else null,
                                 collapsed = collapsed,
                                 onCollapsedChange = { collapsed = it },
@@ -487,6 +494,7 @@ private fun DemoSheet(
     recentApps: List<RecentApp>,
     recentsOff: Boolean,
     onEnableRecents: () -> Unit,
+    onOpenSettings: () -> Unit,
     sharedText: String?,
     collapsed: Boolean,
     onCollapsedChange: (Boolean) -> Unit,
@@ -609,9 +617,12 @@ private fun DemoSheet(
                 } else {
                     Spacer(Modifier.weight(1f))
                 }
-                // The sheet's own Configure gear, drawn but inert: this is a picture of the sheet, and
-                // the screen around it is already where configuration happens.
-                Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                // The sheet's own Configure gear, and it works: the same trip to Settings the real
+                // one makes from here.
+                Box(
+                    Modifier.size(48.dp).clickable { onOpenSettings() },
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
                         Icons.Default.Settings,
                         contentDescription = null,
@@ -987,10 +998,11 @@ private fun HeroIcon(
  * demo there is nothing underneath it to come back from.
  */
 @Composable
-private fun DemoGearChip(modifier: Modifier = Modifier) {
+private fun DemoGearChip(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
         modifier
             .padding(GEAR_MARGIN)
+            .clickable { onClick() }
             .size(GEAR_SCRIM)
             .background(GEAR_SCRIM_COLOR, CircleShape),
         contentAlignment = Alignment.Center

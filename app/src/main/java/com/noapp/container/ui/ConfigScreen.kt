@@ -166,7 +166,7 @@ private fun ModePickerDialog(
     peekBubbleAlpha: Float,
     peekBubbleDockPeek: Float,
     peekBubbleReturns: Boolean,
-    onOpenSetting: (SettingsSpot) -> Unit,
+    onOpenSetting: (SettingsSpot?) -> Unit,
     slots: List<ShortcutSlot>,
     onModeSelected: (AppMode) -> Unit,
     onDismiss: () -> Unit
