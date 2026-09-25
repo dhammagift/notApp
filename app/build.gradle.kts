@@ -60,6 +60,15 @@ android {
         compose = true
         buildConfig = true
     }
+
+    // Roborazzi renders the real composables to PNGs on the JVM (Robolectric + Layoutlib) — the only
+    // way to look at this UI without a device. The tests themselves only run with RENDER_SNAPSHOTS=1,
+    // so CI stays untouched.
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 dependencies {
@@ -75,6 +84,18 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.core:core-ktx:1.15.0")
 
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.32.2")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.32.2")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("androidx.test.ext:junit:1.2.1")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
+}
+
+// Roborazzi only writes images when it is told to record; without the plugin that is this property.
+tasks.withType<Test>().configureEach {
+    systemProperty("roborazzi.test.record", System.getenv("RENDER_SNAPSHOTS") == "1")
 }

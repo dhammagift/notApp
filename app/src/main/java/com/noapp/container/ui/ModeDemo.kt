@@ -224,7 +224,7 @@ fun ModeDemo(
                         onTap = { if (mode == AppMode.LIST) collapsed = false },
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(top = 46.dp, end = 12.dp)
+                            .padding(top = 62.dp, end = 12.dp)
                     )
                     when (mode) {
                         AppMode.LIST -> DemoSheet(
@@ -284,6 +284,7 @@ fun ModeDemo(
                                 collapsed = collapsed,
                                 onCollapsedChange = { collapsed = it },
                                 modifier = Modifier
+                                    .align(Alignment.BottomCenter)
                                     .widthIn(max = if (narrowSheet) SHEET_MAX_WIDTH else Dp.Unspecified)
                                     .fillMaxWidth()
                                     .padding(horizontal = MIX_SHEET_INSET)
