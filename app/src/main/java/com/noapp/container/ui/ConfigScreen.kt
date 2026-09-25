@@ -162,6 +162,7 @@ private fun ModePickerDialog(
     peekBubbleAlpha: Float,
     peekBubbleDockPeek: Float,
     peekBubbleReturns: Boolean,
+    onOpenSetting: (SettingsSpot) -> Unit,
     slots: List<ShortcutSlot>,
     onModeSelected: (AppMode) -> Unit,
     onDismiss: () -> Unit
@@ -309,6 +310,10 @@ private fun ModePickerDialog(
                         peekBubbleAlpha = peekBubbleAlpha,
                         peekBubbleDockPeek = peekBubbleDockPeek,
                         peekBubbleReturns = peekBubbleReturns,
+                        onOpenSetting = { spot ->
+                            modeDialogVisible = false
+                            onOpenSettings(spot)
+                        },
                         narrowSheet = wideLandscape,
                         onShowShortcuts = { shortcutsShown = true },
                         modifier = Modifier
@@ -366,7 +371,7 @@ fun ConfigScreen(
     onHintShown: (UiHint) -> Unit,
     onEditSlot: (Int) -> Unit,
     onAddSlot: (SlotType) -> Unit,
-    onOpenSettings: () -> Unit,
+    onOpenSettings: (SettingsSpot?) -> Unit,
     onModeChanged: (AppMode) -> Unit,
     onSlotsChanged: (List<ShortcutSlot>) -> Unit,
     // AppConfig.tileSlot: which row's rocket marker is lit, and the only way to move it.
@@ -444,6 +449,12 @@ fun ConfigScreen(
                             peekBubbleAlpha = peekBubbleAlpha,
                             peekBubbleDockPeek = peekBubbleDockPeek,
                             peekBubbleReturns = peekBubbleReturns,
+                            onOpenSetting = { spot ->
+                                // Close the picker first: the user is going somewhere else, and the
+                                // dialog would otherwise sit on top of the screen they asked for.
+                                modeDialogVisible = false
+                                onOpenSettings(spot)
+                            },
                             slots = slots,
                             // The dialog deliberately stays open on a choice: the example at the
                             // bottom is the whole point of it, and it can only show a mode once that
@@ -453,7 +464,7 @@ fun ConfigScreen(
                         )
                     }
                     TextButton(onClick = { showFillDialog = true }) { Text(stringResource(R.string.config_fill)) }
-                    IconButton(onClick = onOpenSettings) {
+                    IconButton(onClick = { onOpenSettings(null) }) {
                         Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.config_settings_desc))
                     }
                 }

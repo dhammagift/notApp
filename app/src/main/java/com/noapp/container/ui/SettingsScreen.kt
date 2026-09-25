@@ -54,6 +54,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.delay
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -105,10 +110,24 @@ private fun IconVariant.displayName(): String = when (id) {
     else -> id
 }
 
+/** The wash a spotlighted row wears while it is being pointed at, then fades out. */
+@Composable
+private fun spotlightFlash(on: Boolean): Color {
+    val alpha by animateFloatAsState(if (on) 1f else 0f, tween(SPOTLIGHT_FADE_MS), label = "spotlight")
+    return MaterialTheme.colorScheme.secondaryContainer.copy(alpha = alpha * 0.7f)
+}
+
+private const val SPOTLIGHT_MS = 1600L
+private const val SPOTLIGHT_FADE_MS = 350
+private const val SPOTLIGHT_TOP_MARGIN_PX = 220
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     config: AppConfig,
+    // A row to scroll to and flash, when something else sent the user here (the mode picker's demo).
+    spotlight: SettingsSpot?,
+    onSpotlightShown: () -> Unit,
     hint: UiHint?,
     onHintShown: (UiHint) -> Unit,
     onImportConfig: (AppConfig) -> Unit,
@@ -125,6 +144,27 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val scrollState = rememberScrollState()
+    // Where the two rows worth pointing at sit, so the screen can scroll to one of them.
+    var recentAppsY by remember { mutableIntStateOf(0) }
+    var floatingButtonY by remember { mutableIntStateOf(0) }
+    var flashing by remember { mutableStateOf(false) }
+
+    // Wait a frame: the offsets above are only known after the first layout pass, and the screen is
+    // built from scratch on the way in.
+    LaunchedEffect(spotlight) {
+        val spot = spotlight ?: return@LaunchedEffect
+        delay(120)
+        scrollState.animateScrollTo(
+            (if (spot == SettingsSpot.RECENT_APPS) recentAppsY else floatingButtonY)
+                .minus(SPOTLIGHT_TOP_MARGIN_PX)
+                .coerceAtLeast(0)
+        )
+        flashing = true
+        delay(SPOTLIGHT_MS)
+        flashing = false
+        onSpotlightShown()
+    }
 
     // See ConfigScreen's own copy of this, and UiHint: consumed only after it's been shown.
     LaunchedEffect(hint?.id) {
@@ -250,7 +290,7 @@ fun SettingsScreen(
             )
         }
     ) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState())) {
+        Column(Modifier.padding(padding).fillMaxSize().verticalScroll(scrollState)) {
             // First thing in Settings while it is unanswered, and that is deliberate: in DIRECT
             // mode this screen is the only place Not App itself is ever on screen, so the ask
             // would otherwise be a row someone has to scroll past to find (or never notice).
@@ -353,6 +393,9 @@ fun SettingsScreen(
             )
             HorizontalDivider()
             ListItem(
+                modifier = Modifier
+                    .onGloballyPositioned { recentAppsY = it.positionInParent().y.toInt() }
+                    .background(spotlightFlash(spotlight == SettingsSpot.RECENT_APPS && flashing)),
                 headlineContent = { Text(stringResource(R.string.settings_show_recent_apps)) },
                 supportingContent = { Text(stringResource(R.string.settings_show_recent_apps_hint)) },
                 trailingContent = {
@@ -370,6 +413,9 @@ fun SettingsScreen(
             )
             HorizontalDivider()
             ListItem(
+                modifier = Modifier
+                    .onGloballyPositioned { floatingButtonY = it.positionInParent().y.toInt() }
+                    .background(spotlightFlash(spotlight == SettingsSpot.FLOATING_BUTTON && flashing)),
                 headlineContent = { Text(stringResource(R.string.settings_show_peek_bubble)) },
                 supportingContent = { Text(stringResource(R.string.settings_show_peek_bubble_hint)) },
                 trailingContent = {

@@ -136,6 +136,7 @@ fun ModeDemo(
     peekBubbleAlpha: Float,
     peekBubbleDockPeek: Float,
     peekBubbleReturns: Boolean,
+    onOpenSetting: (SettingsSpot) -> Unit,
     narrowSheet: Boolean,
     onShowShortcuts: () -> Unit,
     modifier: Modifier = Modifier
@@ -152,6 +153,12 @@ fun ModeDemo(
             emptyList()
         }
     }
+    // The share sheet is the same list with a "send to" line and no floating button at all (allowPeek
+    // is off for it), and it exists in every mode but DIRECT. Kept across a mode switch: comparing the
+    // two is the whole point of the switch.
+    var shareCase by remember { mutableStateOf(false) }
+    val canOverlay = AndroidSettings.canDrawOverlays(context)
+
     Surface(
         modifier = modifier,
         shape = MaterialTheme.shapes.large,
@@ -180,13 +187,7 @@ fun ModeDemo(
             }
             // Keyed on the mode: switching modes must show the new example expanded, not the state
             // the previous one was left in (a sheet collapsed to its handle, say).
-            // The share sheet is the same list with a "send to" line and no floating button at all
-    // (allowPeek is off for it), and it exists in every mode but DIRECT. Declared here so it survives
-    // a mode switch: comparing the two is the whole point of the switch.
-    var shareCase by remember { mutableStateOf(false) }
-    val canOverlay = AndroidSettings.canDrawOverlays(context)
-
-    // "Bring the button back after ✕": on, the button returns the next time the list is
+            // "Bring the button back after ✕": on, the button returns the next time the list is
             // opened here (a mode switch, in the demo); off, it stays gone for the rest of this
             // picker. The app persists that across openings, which a demo must not do — it never
             // writes the user's settings.
@@ -204,6 +205,8 @@ fun ModeDemo(
                             items = items,
                             startNumber = 1,
                             recentApps = recentApps,
+                            recentsOff = !showRecentApps,
+                            onEnableRecents = { onOpenSetting(SettingsSpot.RECENT_APPS) },
                             sharedText = if (shareCase) stringResource(R.string.mode_demo_share_text) else null,
                             collapsed = collapsed,
                             onCollapsedChange = { collapsed = it },
@@ -256,6 +259,8 @@ fun ModeDemo(
                                 items = items.drop(1),
                                 startNumber = 2,
                                 recentApps = recentApps,
+                                recentsOff = !showRecentApps,
+                                onEnableRecents = { onOpenSetting(SettingsSpot.RECENT_APPS) },
                                 sharedText = if (shareCase) stringResource(R.string.mode_demo_share_text) else null,
                                 collapsed = collapsed,
                                 onCollapsedChange = { collapsed = it },
@@ -278,6 +283,15 @@ fun ModeDemo(
                     // permission the app falls back to a button in its own window — both cases are
                     // drawn here rather than described.
                     val showButton = showPeekBubble && mode != AppMode.DIRECT && collapsed && !bubbleGone && !shareCase
+                    if (!showPeekBubble && mode != AppMode.DIRECT && !shareCase && collapsed) {
+                        // The setting is off: the button is shown faded where it would sit, with the
+                        // way to turn it on — seeing it is what tells the user the option exists.
+                        DemoOffHint(
+                            text = stringResource(R.string.settings_show_peek_bubble),
+                            onClick = { onOpenSetting(SettingsSpot.FLOATING_BUTTON) },
+                            modifier = Modifier.align(Alignment.BottomEnd).padding(PEEK_MARGIN)
+                        )
+                    }
                     if (showButton && !canOverlay) {
                         DemoPeekPill(onOpen = { collapsed = false })
                     } else if (showButton) {
@@ -341,6 +355,37 @@ private fun DemoCaseChip(label: String, selected: Boolean, onClick: () -> Unit) 
             .clickable { onClick() }
             .padding(horizontal = 10.dp, vertical = 5.dp)
     )
+}
+
+/** A feature that exists but is switched off: named, faded, and one tap from its own setting. */
+@Composable
+private fun DemoOffHint(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.End) {
+        Box(
+            Modifier
+                .size(PEEK_BUBBLE)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Menu,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            stringResource(R.string.mode_demo_enable_in_settings) + ": " + text,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
+                .clickable { onClick() }
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+        )
+    }
 }
 
 /**
@@ -412,6 +457,8 @@ private fun DemoSheet(
     items: List<ShortcutSlot>,
     startNumber: Int,
     recentApps: List<RecentApp>,
+    recentsOff: Boolean,
+    onEnableRecents: () -> Unit,
     sharedText: String?,
     collapsed: Boolean,
     onCollapsedChange: (Boolean) -> Unit,
@@ -484,6 +531,36 @@ private fun DemoSheet(
                         }
                     }
                     VerticalDivider(Modifier.height(24.dp).padding(horizontal = 4.dp))
+                } else if (recentsOff) {
+                    // Off, not unavailable: the strip is drawn as it would be, greyed, next to the way
+                    // to turn it on.
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        repeat(4) {
+                            Box(
+                                Modifier
+                                    .padding(horizontal = 6.dp)
+                                    .size(32.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.18f),
+                                        CircleShape
+                                    )
+                            )
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            stringResource(R.string.mode_demo_enable_in_settings),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .clickable { onEnableRecents() }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
                 } else {
                     Spacer(Modifier.weight(1f))
                 }

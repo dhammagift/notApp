@@ -477,6 +477,9 @@ private fun NoAppRoot(
         BackHandler { onScreenChange(Screen.Config) }
     }
 
+    // Which Settings row to scroll to and flash, set when something else sends the user here.
+    var settingsSpotlight by remember { mutableStateOf<SettingsSpot?>(null) }
+
     when (screen) {
         is Screen.Config -> ConfigScreen(
             mode = mode,
@@ -492,7 +495,10 @@ private fun NoAppRoot(
             onHintShown = onHintShown,
             onEditSlot = { index -> onScreenChange(Screen.EditSlot(index)) },
             onAddSlot = { type -> onScreenChange(Screen.NewSlot(type)) },
-            onOpenSettings = { onScreenChange(Screen.Settings) },
+            onOpenSettings = { spot ->
+                settingsSpotlight = spot
+                onScreenChange(Screen.Settings)
+            },
             onModeChanged = onModeChanged,
             onSlotsChanged = onSlotsChanged,
             tileSlot = tileSlot,
@@ -532,6 +538,8 @@ private fun NoAppRoot(
 
         is Screen.Settings -> SettingsScreen(
             config = AppConfig(mode, slots.toList(), useAllSlotsInDirectMode, iconVariant, showPeekBubble, peekBubbleReturns, peekBubbleSize, peekBubbleAlpha, peekBubbleDockPeek, showRecentApps, theme),
+            spotlight = settingsSpotlight,
+            onSpotlightShown = { settingsSpotlight = null },
             hint = hint,
             onHintShown = onHintShown,
             onImportConfig = onConfigImported,
