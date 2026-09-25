@@ -59,7 +59,7 @@
              dismissing the top one used to reveal a duplicate underneath. -->
         <activity
             android:name=".QuickPickActivity"
-            android:exported="true"
+            android:exported="false"
             android:launchMode="singleTask"
             android:theme="@style/Theme.NoApp.Transparent" />
 

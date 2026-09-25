@@ -318,13 +318,21 @@ class MainActivity : ComponentActivity() {
     private fun dispatchIfShortcut(intent: Intent, config: AppConfig): Boolean {
         if (intent.getBooleanExtra(EXTRA_OPEN_CONFIG, false)) return false // Configure entry: show UI instead
 
+        // Slot and tile extras are honoured only from intents we handed out ourselves. Anything else
+        // carrying them is another app, or a shortcut from before the token: re-publish ours (which
+        // repairs the latter) and treat it as a plain tap.
+        val ownLaunch = ShortcutSync.isOwnLaunch(this, intent)
+        if (!ownLaunch && (intent.hasExtra(EXTRA_TILE_TARGET) || intent.hasExtra(EXTRA_SLOT_ID))) {
+            ShortcutSync.sync(this, config.mode, config.slots, config.useAllSlotsInDirectMode)
+        }
+
         // The shade tile asked for one specific slot. Mix means what it means everywhere else in the
         // app: the slot runs AND the list comes up over it, with that item left out (the sheet is told
         // what was launched). In List and Direct the slot simply runs — there the list is either
         // already the app's own screen or not part of a plain launch at all.
         // A stale assignment (the slot was edited away) falls through to the ordinary tap handling
         // below, i.e. the tile behaves like the launcher icon again.
-        val tileTarget = intent.getStringExtra(EXTRA_TILE_TARGET)
+        val tileTarget = if (ownLaunch) intent.getStringExtra(EXTRA_TILE_TARGET) else null
         if (tileTarget != null) {
             val slot = config.slots.firstOrNull { it.targetKey == tileTarget }
             if (slot != null) {
@@ -340,7 +348,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        val explicitId = intent.getIntExtra(EXTRA_SLOT_ID, -1)
+        val explicitId = if (ownLaunch) intent.getIntExtra(EXTRA_SLOT_ID, -1) else -1
         if (explicitId >= 0) {
             config.slots.getOrNull(explicitId)?.let { ActionDispatcher.execute(this, it) }
             finishWithoutTransition()

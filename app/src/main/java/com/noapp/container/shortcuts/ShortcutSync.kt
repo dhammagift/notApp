@@ -17,8 +17,12 @@ import java.util.concurrent.Executors
 
 const val EXTRA_SLOT_ID = "extra_slot_id"
 const val EXTRA_OPEN_CONFIG = "extra_open_config"
+private const val EXTRA_LAUNCH_TOKEN = "extra_launch_token"
 private const val SHORTCUT_ICON_SIZE_PX = 108
 private const val CONFIGURE_SHORTCUT_ID = "configure"
+
+/** See [ShortcutSync.launchToken]. */
+fun Intent.withLaunchToken(context: Context): Intent = putExtra(EXTRA_LAUNCH_TOKEN, ShortcutSync.launchToken(context))
 
 /**
  * Publishes configured slots as dynamic App Shortcuts (long-press menu), always
@@ -39,6 +43,20 @@ private const val CONFIGURE_SHORTCUT_ID = "configure"
  * shortcut for it too would just duplicate something that happens on tap anyway.
  */
 object ShortcutSync {
+    /**
+     * A per-install secret carried by every slot intent we hand out (launcher shortcuts, the shade
+     * tile). MainActivity has to stay exported for the launcher and the share sheet, so without
+     * this any installed app could fire the user's slots, INTENT ones included, as Not App.
+     */
+    fun launchToken(context: Context): String {
+        val prefs = context.getSharedPreferences("no_app_launch", Context.MODE_PRIVATE)
+        return prefs.getString("token", null)
+            ?: java.util.UUID.randomUUID().toString().also { prefs.edit().putString("token", it).apply() }
+    }
+
+    fun isOwnLaunch(context: Context, intent: Intent): Boolean =
+        intent.getStringExtra(EXTRA_LAUNCH_TOKEN) == launchToken(context)
+
     // One background thread, so calls still apply in order (last sync wins) while none of the
     // work — up to a dozen app-icon loads through PackageManager plus the ShortcutManager IPC —
     // lands on the main thread, where it used to be part of every cold start and every edit.
@@ -78,6 +96,15 @@ object ShortcutSync {
                 }
                 // Full replace each time: always under budget by construction, no drift bookkeeping needed.
                 ShortcutManagerCompat.setDynamicShortcuts(appContext, shortcuts)
+                // Home-screen pins (Settings) aren't covered by the replace above; refresh them too,
+                // so ones made before launchToken existed pick it up.
+                val pinned = ShortcutManagerCompat.getShortcuts(appContext, ShortcutManagerCompat.FLAG_MATCH_PINNED)
+                    .mapNotNull { info ->
+                        info.id.removePrefix("slot_").toIntOrNull()
+                            ?.let { id -> snapshot.firstOrNull { it.id == id && it.isConfigured } }
+                            ?.let { shortcutFor(appContext, it, component) }
+                    }
+                if (pinned.isNotEmpty()) ShortcutManagerCompat.updateShortcuts(appContext, pinned)
             }
         }
     }
@@ -99,6 +126,7 @@ object ShortcutSync {
         val intent = Intent(context, MainActivity::class.java)
             .setAction(Intent.ACTION_VIEW)
             .putExtra(EXTRA_SLOT_ID, slot.id)
+            .withLaunchToken(context)
 
         return ShortcutInfoCompat.Builder(context, "slot_${slot.id}")
             .setActivity(component)

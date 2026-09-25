@@ -11,6 +11,7 @@ import com.noapp.container.data.ConfigStore
 import com.noapp.container.model.AppConfig
 import com.noapp.container.model.ShortcutSlot
 import com.noapp.container.shortcuts.ActionDispatcher
+import com.noapp.container.shortcuts.withLaunchToken
 
 /**
  * Not App in the Quick Settings shade, in one of two shapes:
@@ -62,6 +63,7 @@ class NotAppTileService : TileService() {
             slot == null -> launcherIntent()
             mode == AppMode.MIX -> Intent(this, MainActivity::class.java)
                 .putExtra(EXTRA_TILE_TARGET, slot.targetKey)
+                .withLaunchToken(this)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             else -> ActionDispatcher.intentFor(this, slot) ?: launcherIntent()
         }

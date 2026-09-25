@@ -68,7 +68,7 @@ object DebugLog {
     }
 
     fun file(context: Context): File =
-        File(context.getExternalFilesDir(null) ?: context.filesDir, FILE_NAME)
+        File(context.filesDir, FILE_NAME)
 
     private fun append(context: Context, line: String) {
         val f = file(context)

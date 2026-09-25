@@ -1,3 +1,3 @@
 <paths>
-    <external-files-path name="debug_logs" path="." />
+    <files-path name="debug_logs" path="." />
 </paths>
