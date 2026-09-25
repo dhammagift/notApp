@@ -95,7 +95,7 @@
     <string name="mode_demo_short_float">Плавающая кнопка</string>
     <string name="mode_demo_short_all_slots">Все слоты</string>
     <string name="mode_demo_label">Демо — попробуйте меня</string>
-    <string name="mode_demo_share_hint">Выделить текст → Поделиться → Not App</string>
+    <string name="mode_demo_share_hint">В любом приложении: выделите текст → Поделиться → Not App</string>
     <string name="mode_demo_enable_in_settings">Включить</string>
     <string name="mode_demo_long_press">Удержите иконку — меню шорткатов</string>
     <string name="mode_demo_shortcuts_title">Меню шорткатов</string>

@@ -97,7 +97,7 @@
     <string name="mode_demo_short_float">Floating button</string>
     <string name="mode_demo_short_all_slots">All slots</string>
     <string name="mode_demo_label">Demo — try me</string>
-    <string name="mode_demo_share_hint">Select text → Share → Not App</string>
+    <string name="mode_demo_share_hint">In any app: select text → Share → Not App</string>
     <string name="mode_demo_enable_in_settings">Turn on</string>
     <string name="mode_demo_long_press">Hold the icon — shortcut menu</string>
     <string name="mode_demo_shortcuts_title">Shortcut menu</string>

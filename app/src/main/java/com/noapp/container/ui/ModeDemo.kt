@@ -39,6 +39,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
@@ -188,18 +189,24 @@ fun ModeDemo(
             if (shareCase) {
                 // Without this the share variant is just an oddly-annotated list; with it, it says
                 // where the screen comes from, which is the thing a user has never seen.
-                Text(
-                    stringResource(R.string.mode_demo_share_hint),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White,
-                    textAlign = TextAlign.Center,
+                SelectionContainer(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .widthIn(max = 280.dp)
+                        .widthIn(max = 290.dp)
                         .padding(top = 46.dp, start = 24.dp, end = 24.dp)
-                        .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(50))
-                        .padding(horizontal = 12.dp, vertical = 5.dp)
-                )
+                        .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    // Selectable on purpose: step one of the three is selecting text, and the user can
+                    // do exactly that here — the selection toolbar's own Share then opens this sheet
+                    // for real.
+                    Text(
+                        stringResource(R.string.mode_demo_share_hint),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
             // Keyed on the mode: switching modes must show the new example expanded, not the state
             // the previous one was left in (a sheet collapsed to its handle, say).
