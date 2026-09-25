@@ -27,10 +27,19 @@ object ReviewStore {
 
     private fun answered(context: Context): Boolean = prefs(context).getBoolean(KEY_DONE, false)
 
-    private fun daysSinceInstall(context: Context): Long = runCatching {
-        val installedAt = context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
-        (System.currentTimeMillis() - installedAt) / MS_PER_DAY
-    }.getOrDefault(0L)
+    /**
+     * The two facts the policy is built on, behind a seam so the tests can move the calendar instead
+     * of waiting two months: the app itself always reads the real clock and the real install time.
+     */
+    internal var clock: () -> Long = { System.currentTimeMillis() }
+    internal var installedAt: (Context) -> Long = { context ->
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
+        }.getOrDefault(0L)
+    }
+
+    private fun daysSinceInstall(context: Context): Long =
+        ((clock() - installedAt(context)) / MS_PER_DAY).coerceAtLeast(0L)
 
     /** Whether the card may be shown right now; the caller decides where it lands. */
     fun cardDue(context: Context): Boolean = !answered(context) &&

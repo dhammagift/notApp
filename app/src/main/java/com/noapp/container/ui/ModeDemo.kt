@@ -180,11 +180,10 @@ fun ModeDemo(
         ) {
             val panelWidth = maxWidth
             val panelHeight = maxHeight
-            DemoLabel()
-            DemoCaseSwitch(
+            DemoTopStrip(
                 shareCase = shareCase,
                 onChange = { shareCase = it },
-                modifier = Modifier.align(Alignment.TopEnd)
+                modifier = Modifier.align(Alignment.TopStart).fillMaxWidth()
             )
             // Every hint lives in this one block, directly under the two controls: floating them next
             // to whatever they were about meant a different mess on every screen size.
@@ -245,6 +244,13 @@ fun ModeDemo(
                             collapsed = collapsed,
                             onCollapsedChange = { collapsed = it },
                             pulse = listPulse,
+                            heightCap = minOf(
+                                panelHeight * SHEET_PANEL_FRACTION,
+                                // ...but never over the icon and its caption: a shorter panel (the
+                                // picker's own, with three cards above it) used to push the sheet up
+                                // over the caption's last line, which read as the caption being cut.
+                                (panelHeight - MIX_ICON_SPACE).coerceAtLeast(MIX_SHEET_MIN_HEIGHT)
+                            ),
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .widthIn(max = if (narrowSheet) SHEET_MAX_WIDTH else Dp.Unspecified)
@@ -292,17 +298,15 @@ fun ModeDemo(
                                 sharedText = if (shareCase) stringResource(R.string.mode_demo_share_text) else null,
                                 collapsed = collapsed,
                                 onCollapsedChange = { collapsed = it },
+                                heightCap = minOf(
+                                    panelHeight * SHEET_PANEL_FRACTION,
+                                    (panelHeight - MIX_ICON_SPACE).coerceAtLeast(MIX_SHEET_MIN_HEIGHT)
+                                ),
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
                                     .widthIn(max = if (narrowSheet) SHEET_MAX_WIDTH else Dp.Unspecified)
                                     .fillMaxWidth()
                                     .padding(horizontal = MIX_SHEET_INSET)
-                                    // Everything the panel has above the icon block: a fixed cap here
-                                    // made Mix's list stop halfway while List's ran the full height.
-                                    .heightIn(
-                                        max = (panelHeight - MIX_ICON_SPACE)
-                                            .coerceAtLeast(MIX_SHEET_MIN_HEIGHT)
-                                    )
                             )
                         }
                     }
@@ -437,21 +441,6 @@ private fun BoxScope.DemoHints(
  * "send to" line and no floating button, because sharing never peeks.
  */
 @Composable
-private fun BoxScope.DemoCaseSwitch(
-    shareCase: Boolean,
-    onChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier.padding(end = 12.dp, top = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        DemoCaseChip(stringResource(R.string.mode_demo_normal), selected = !shareCase) { onChange(false) }
-        DemoCaseChip(stringResource(R.string.mode_demo_share), selected = shareCase) { onChange(true) }
-    }
-}
-
-@Composable
 private fun DemoCaseChip(label: String, selected: Boolean, onClick: () -> Unit) {
     Text(
         label,
@@ -526,22 +515,38 @@ private fun BoxScope.DemoPeekPill(onOpen: () -> Unit) {
     }
 }
 
-/** Says out loud what the panel is, so it is never mistaken for live UI. */
+/**
+ * The panel's own label and the two cases it can show, laid out as one row. As two separate corners
+ * of the panel the label ran underneath the chips — on the picker's narrower panel a longer label
+ * ("Демо — попробуйте меня") lost its last word to them, and the chips drew over it.
+ */
 @Composable
-private fun BoxScope.DemoLabel() {
-    Text(
-        stringResource(R.string.mode_demo_label),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier
-            .align(Alignment.TopStart)
-            .padding(start = 12.dp, top = 10.dp)
-            .background(
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
-                shape = RoundedCornerShape(10.dp)
-            )
-            .padding(horizontal = 10.dp, vertical = 5.dp)
-    )
+private fun DemoTopStrip(shareCase: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            stringResource(R.string.mode_demo_label),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            // Weight, not a fixed size: the chips are measured first and the label gets what is left,
+            // so a long one wraps instead of sliding under them. SpaceBetween keeps the chips at the
+            // end however wide the label turned out.
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .background(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
+                    shape = RoundedCornerShape(10.dp)
+                )
+                .padding(horizontal = 10.dp, vertical = 5.dp)
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            DemoCaseChip(stringResource(R.string.mode_demo_normal), selected = !shareCase) { onChange(false) }
+            DemoCaseChip(stringResource(R.string.mode_demo_share), selected = shareCase) { onChange(true) }
+        }
+    }
 }
 
 /**
@@ -564,7 +569,8 @@ private fun DemoSheet(
     collapsed: Boolean,
     onCollapsedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
-    pulse: Int = 0
+    pulse: Int = 0,
+    heightCap: Dp = SHEET_MAX_HEIGHT
 ) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
@@ -598,7 +604,7 @@ private fun DemoSheet(
 
     Surface(
         modifier = modifier
-            .heightIn(max = SHEET_MAX_HEIGHT)
+            .heightIn(max = heightCap)
             .onSizeChanged { sheetHeightPx = it.height }
             .offset { IntOffset(0, (offsetY.value + dragPx).roundToInt()) }
             .draggable(
@@ -1251,6 +1257,9 @@ private val MIX_SHEET_MIN_HEIGHT = 120.dp
 
 /** The most the sheet grows to before its list scrolls instead. */
 private val SHEET_MAX_HEIGHT = 460.dp
+
+/** The real sheet keeps its list inside 60% of the screen; the example follows the same rule. */
+private const val SHEET_PANEL_FRACTION = 0.6f
 
 /** A sheet is a phone-shaped thing: on a landscape screen it keeps that width, centred. */
 private val SHEET_MAX_WIDTH = 420.dp

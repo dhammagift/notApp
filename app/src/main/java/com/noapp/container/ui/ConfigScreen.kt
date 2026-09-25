@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -121,6 +122,14 @@ private const val MAX_FILL_SELECTION = 20
 /** Never taller than this, however long the descriptions get: the example below needs room too. */
 private val CARDS_MAX_HEIGHT = 340.dp
 
+/**
+ * ...but on a tall screen the three cards fit without anyone scrolling, and they should: the third
+ * one is the mode people are least sure about, and it was the one cut off mid-description. The extra
+ * height comes out of the example's share, which is a preview and can afford it.
+ */
+private val CARDS_MAX_HEIGHT_TALL = 420.dp
+private const val CARDS_TALL_FRACTION = 0.47f
+
 
 private fun SlotType.icon(): ImageVector = when (this) {
     SlotType.APP -> AndroidIcon
@@ -178,6 +187,8 @@ private fun ModePickerDialog(
     var shortcutsShown by remember { mutableStateOf(false) }
     val configuration = LocalConfiguration.current
     val wideLandscape = configuration.screenWidthDp > configuration.screenHeightDp
+    val cardsMaxHeight = (configuration.screenHeightDp * CARDS_TALL_FRACTION).dp
+        .coerceIn(CARDS_MAX_HEIGHT, CARDS_MAX_HEIGHT_TALL)
     val overlaySettingsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
@@ -250,99 +261,74 @@ private fun ModePickerDialog(
                             }
                         }
                     )
-                    Column(
-                        Modifier.heightIn(max = CARDS_MAX_HEIGHT)
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        AppMode.entries.forEach { candidate ->
-                            val selected = candidate == currentMode
-                            Surface(
-                                onClick = { selectMode(candidate) },
-                                shape = MaterialTheme.shapes.medium,
-                                color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
-                                    Column(Modifier.weight(1f)) {
-                                        Text(stringResource(candidate.choiceTitleRes()), style = MaterialTheme.typography.titleMedium)
-                                        Spacer(Modifier.padding(top = 4.dp))
-                                        // Direct's description carries two facts, and the second one —
-                                        // that Settings moved into the long-press menu — is the one nobody
-                                        // reads past. Bold and in the theme's alert colour, so choosing the
-                                        // mode is itself where that is learned.
-                                        val description = if (candidate == AppMode.DIRECT) {
-                                            buildAnnotatedString {
-                                                append(stringResource(R.string.config_mode_direct_desc))
-                                                append(" ")
-                                                // Only the word "Settings" is coloured; the phrase it belongs
-                                                // to is bold, and the parenthetical tail is ordinary text —
-                                                // the emphasis marks the fact, not the whole paragraph.
-                                                withStyle(
-                                                    SpanStyle(
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = MaterialTheme.colorScheme.error
-                                                    )
-                                                ) {
-                                                    append(stringResource(R.string.config_mode_direct_desc_settings))
-                                                }
-                                                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                                                    append(" ")
-                                                    append(
-                                                        stringResource(
-                                                            R.string.config_mode_direct_desc_settings_suffix
-                                                        )
-                                                    )
-                                                }
-                                                append(" ")
-                                                append(stringResource(R.string.config_mode_direct_desc_tail))
-                                            }
-                                        } else {
-                                            AnnotatedString(stringResource(candidate.descriptionRes()))
-                                        }
-                                        Text(description, style = MaterialTheme.typography.bodyMedium)
-                                    }
-                                    if (selected) {
-                                        Icon(
-                                            Icons.Default.Check,
-                                            contentDescription = null,
-                                            modifier = Modifier.padding(start = 8.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                    // Written once and placed by either branch below: the two orientations put the
+                    // example in different places, and a second copy of this call would only be a
+                    // second place to keep in step.
+                    val example: @Composable (Modifier) -> Unit = { demoModifier ->
+                        ModeDemo(
+                            mode = currentMode,
+                            slots = slots,
+                            showRecentApps = showRecentApps,
+                            showPeekBubble = showPeekBubble,
+                            useAllSlotsInDirectMode = useAllSlotsInDirectMode,
+                            peekBubbleSize = peekBubbleSize,
+                            peekBubbleAlpha = peekBubbleAlpha,
+                            peekBubbleDockPeek = peekBubbleDockPeek,
+                            peekBubbleReturns = peekBubbleReturns,
+                            // Inside the dialog: closing it is onDismiss(), and the spot is forwarded to
+                            // the Config screen that opened the dialog.
+                            onOpenSetting = { spot ->
+                                onDismiss()
+                                onOpenSetting(spot)
+                            },
+                            narrowSheet = wideLandscape,
+                            onShowShortcuts = { shortcutsShown = true },
+                            modifier = demoModifier
+                        )
                     }
-                    // Outside the scrolling part and weighted, so it takes all the height the cards
-                    // leave: the picture of the mode that is on right now, never covering them.
-                    ModeDemo(
-                        mode = currentMode,
-                        slots = slots,
-                        showRecentApps = showRecentApps,
-                        showPeekBubble = showPeekBubble,
-                        useAllSlotsInDirectMode = useAllSlotsInDirectMode,
-                        peekBubbleSize = peekBubbleSize,
-                        peekBubbleAlpha = peekBubbleAlpha,
-                        peekBubbleDockPeek = peekBubbleDockPeek,
-                        peekBubbleReturns = peekBubbleReturns,
-                        // Inside the dialog: closing it is onDismiss(), and the spot is forwarded to
-                        // the Config screen that opened the dialog.
-                        onOpenSetting = { spot ->
-                            onDismiss()
-                            onOpenSetting(spot)
-                        },
-                        narrowSheet = wideLandscape,
-                        onShowShortcuts = { shortcutsShown = true },
-                        modifier = Modifier
-                            .weight(1f)
-                            // The panel is never narrowed: it stands for the screen, and a screen is
-                            // the whole width in either orientation. Only the sheet inside it gets a
-                            // phone's width when the screen is a landscape one.
-                            .align(Alignment.CenterHorizontally)
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
-                    )
+                    if (wideLandscape) {
+                        // Sideways there is no height to stack in: three cards under the title used to
+                        // leave the example a sliver of a few dp, which is as good as not drawing it.
+                        // Side by side both are readable, and the sheet inside the example is already
+                        // narrowed to a phone's width for this case.
+                        Row(Modifier.fillMaxSize()) {
+                            ModeCards(
+                                currentMode = currentMode,
+                                onSelect = ::selectMode,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                                    .verticalScroll(rememberScrollState())
+                            )
+                            example(
+                                Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                            )
+                        }
+                    } else {
+                        ModeCards(
+                            currentMode = currentMode,
+                            onSelect = ::selectMode,
+                            modifier = Modifier
+                                .heightIn(max = cardsMaxHeight)
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .verticalScroll(rememberScrollState())
+                        )
+                        // Outside the scrolling part and weighted, so it takes all the height the
+                        // cards leave: the picture of the mode that is on right now, never covering
+                        // them. The panel is never narrowed — it stands for the screen, and a screen
+                        // is the whole width in either orientation.
+                        example(
+                            Modifier
+                                .weight(1f)
+                                .align(Alignment.CenterHorizontally)
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                        )
+                    }
                 }
                 if (shortcutsShown) {
                     ShortcutMenuOverlay(
@@ -784,5 +770,74 @@ fun ConfigScreen(
                 showFillDialog = false
             }
         )
+    }
+}
+
+
+/**
+ * The three modes and what each of them does, in the order they are offered. Extracted because the
+ * two orientations put it in different places: under the title on a phone held upright, and beside
+ * the example on one held sideways.
+ */
+@Composable
+private fun ModeCards(currentMode: AppMode, onSelect: (AppMode) -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        AppMode.entries.forEach { candidate ->
+            val selected = candidate == currentMode
+            Surface(
+                onClick = { onSelect(candidate) },
+                shape = MaterialTheme.shapes.medium,
+                color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(candidate.choiceTitleRes()), style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.padding(top = 4.dp))
+                        // Direct's description carries two facts, and the second one —
+                        // that Settings moved into the long-press menu — is the one nobody
+                        // reads past. Bold and in the theme's alert colour, so choosing the
+                        // mode is itself where that is learned.
+                        val description = if (candidate == AppMode.DIRECT) {
+                            buildAnnotatedString {
+                                append(stringResource(R.string.config_mode_direct_desc))
+                                append(" ")
+                                // Only the word "Settings" is coloured; the phrase it belongs
+                                // to is bold, and the parenthetical tail is ordinary text —
+                                // the emphasis marks the fact, not the whole paragraph.
+                                withStyle(
+                                    SpanStyle(
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                ) {
+                                    append(stringResource(R.string.config_mode_direct_desc_settings))
+                                }
+                                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                                    append(" ")
+                                    append(
+                                        stringResource(
+                                            R.string.config_mode_direct_desc_settings_suffix
+                                        )
+                                    )
+                                }
+                                append(" ")
+                                append(stringResource(R.string.config_mode_direct_desc_tail))
+                            }
+                        } else {
+                            AnnotatedString(stringResource(candidate.descriptionRes()))
+                        }
+                        Text(description, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    if (selected) {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                }
+            }
+        }
     }
 }

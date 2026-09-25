@@ -101,6 +101,6 @@ dependencies {
 tasks.withType<Test>().configureEach {
     systemProperty("roborazzi.test.record", System.getenv("RENDER_SNAPSHOTS") == "1")
     if (System.getenv("RENDER_SNAPSHOTS") != "1") {
-        exclude("**/DemoSnapshots*")
+        exclude("**/DemoSnapshots*", "**/ScreenSnapshots*")
     }
 }

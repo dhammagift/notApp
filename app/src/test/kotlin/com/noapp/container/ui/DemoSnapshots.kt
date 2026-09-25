@@ -100,3 +100,43 @@ class DemoSnapshots {
 
     @Test fun mixEmptyConfig() = shoot("07-mix-empty") { Panel(AppMode.MIX, slots = emptyList()) }
 }
+
+/**
+ * The same example on a landscape screen, in the dark, and in English: the three cases that were
+ * reported broken on a phone and cannot be judged from a portrait light-theme render.
+ */
+@RunWith(AndroidJUnit4::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [34], qualifiers = "w891dp-h411dp-land-xhdpi")
+class DemoSnapshotsWide {
+
+    @get:Rule
+    val compose = createComposeRule()
+
+    @Before
+    fun onlyWhereAsked() = assumeTrue(System.getenv("RENDER_SNAPSHOTS") == "1")
+
+    @Test
+    fun listLandscape() {
+        compose.setContent {
+            NoAppTheme {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+                    DemoPreview(AppMode.LIST)
+                }
+            }
+        }
+        compose.onRoot().captureRoboImage("build/snapshots/10-list-landscape.png")
+    }
+
+    @Test
+    fun mixLandscape() {
+        compose.setContent {
+            NoAppTheme {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+                    DemoPreview(AppMode.MIX)
+                }
+            }
+        }
+        compose.onRoot().captureRoboImage("build/snapshots/11-mix-landscape.png")
+    }
+}
