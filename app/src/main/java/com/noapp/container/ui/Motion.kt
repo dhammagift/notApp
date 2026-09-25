@@ -61,9 +61,10 @@ fun MorphIcon(to: ImageVector, contentDescription: String?, from: ImageVector? =
 
 /** A cog that turns into place as it appears, like a gear catching. */
 @Composable
-fun Modifier.spinInOnAppear(fromDegrees: Float = -150f, delayMillis: Long = 0): Modifier {
+fun Modifier.spinInOnAppear(fromDegrees: Float = -150f, delayMillis: Long = 0, start: Boolean = true): Modifier {
     val turn = remember { Animatable(fromDegrees) }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(start) {
+        if (!start) return@LaunchedEffect
         delay(delayMillis)
         turn.animateTo(0f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessVeryLow))
     }
@@ -91,9 +92,10 @@ fun Modifier.popInOnAppear(): Modifier {
  * down, a row scrolled into view must not be kept waiting.
  */
 @Composable
-fun Modifier.riseInOnAppear(order: Int, baseDelayMillis: Int = 0): Modifier {
+fun Modifier.riseInOnAppear(order: Int, baseDelayMillis: Int = 0, start: Boolean = true): Modifier {
     val shown = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(start) {
+        if (!start) return@LaunchedEffect
         shown.animateTo(1f, tween(RISE_MS, delayMillis = baseDelayMillis + order.coerceAtMost(RISE_MAX_STEPS) * RISE_STEP_MS, easing = FastOutSlowInEasing))
     }
     return graphicsLayer {

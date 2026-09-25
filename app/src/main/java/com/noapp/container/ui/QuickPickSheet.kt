@@ -1,5 +1,7 @@
 package com.noapp.container.ui
 
+import kotlinx.coroutines.delay
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.runtime.mutableIntStateOf
 import android.app.Activity
@@ -150,9 +152,22 @@ fun QuickPickSheet(
     // frames and the sheet looked like it had simply appeared. A spring with a little overshoot
     // makes it arrive, so it reads as something of ours sliding over the app underneath.
     var sheetHeightPx by remember { mutableIntStateOf(0) }
+    // Whether the rise has begun; the gear and the rows take their cue from it.
+    var sheetRising by remember { mutableStateOf(false) }
+    val view = LocalView.current
     LaunchedEffect(sheetHeightPx > 0) {
         if (sheetHeightPx == 0) return@LaunchedEffect
+        // In Mix this activity opens on top of another app that is still launching, and its window is
+        // not on screen until it has focus: a rise that starts before then plays unseen and the sheet
+        // seems to simply be there. Wait for the window, then begin.
+        var waited = 0L
+        while (!view.hasWindowFocus() && waited < WINDOW_WAIT_MS) {
+            delay(16)
+            waited += 16
+        }
+        delay(50)
         offsetY.snapTo(sheetHeightPx.toFloat())
+        sheetRising = true
         offsetY.animateTo(0f, spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessLow))
     }
 
@@ -280,7 +295,7 @@ fun QuickPickSheet(
                             Icons.Default.Settings,
                             contentDescription = stringResource(R.string.quick_pick_configure_desc),
                             // Waits for the sheet to land, then turns a full circle into place.
-                            modifier = Modifier.spinInOnAppear(fromDegrees = -360f, delayMillis = 320)
+                            modifier = Modifier.spinInOnAppear(fromDegrees = -360f, delayMillis = 320, start = sheetRising)
                         )
                     }
                 }
@@ -297,7 +312,7 @@ fun QuickPickSheet(
                         ListItem(
                             headlineContent = { Text(slot.label.ifBlank { stringResource(R.string.common_item_n, slot.id + 1) }) },
                             leadingContent = { SlotIcon(slot, size = 32.dp) },
-                            modifier = Modifier.riseInOnAppear(index, baseDelayMillis = 260).clickable {
+                            modifier = Modifier.riseInOnAppear(index, baseDelayMillis = 260, start = sheetRising).clickable {
                                 ActionDispatcher.execute(context, slot, sharedText)
                                 leaveWithPeek()
                             }
@@ -374,3 +389,5 @@ private fun PeekPill(onClick: () -> Unit) {
 }
 
 private const val RECENTS_FADE_MS = 260
+
+private const val WINDOW_WAIT_MS = 700L
