@@ -1,7 +1,11 @@
 package com.noapp.container.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -53,12 +57,15 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.center
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -89,10 +96,13 @@ import com.noapp.container.model.ShortcutSlot
 import com.noapp.container.recents.RecentApp
 import com.noapp.container.recents.RecentApps
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 /**
  * The example at the foot of the mode picker: how the mode that is selected right now behaves,
@@ -117,6 +127,8 @@ fun ModeDemo(
     useAllSlotsInDirectMode: Boolean,
     peekBubbleSize: Float,
     peekBubbleAlpha: Float,
+    peekBubbleDockPeek: Float,
+    peekBubbleReturns: Boolean,
     narrowSheet: Boolean,
     onShowShortcuts: () -> Unit,
     modifier: Modifier = Modifier
@@ -146,6 +158,7 @@ fun ModeDemo(
         BoxWithConstraints(
             Modifier
                 .fillMaxSize()
+                .clipToBounds()
                 .drawBehind { brandWallpaper(mark) }
         ) {
             val panelWidth = maxWidth
@@ -153,12 +166,18 @@ fun ModeDemo(
             DemoLabel()
             // Keyed on the mode: switching modes must show the new example expanded, not the state
             // the previous one was left in (a sheet collapsed to its handle, say).
+            // "Bring the button back after ✕": on, the button returns the next time the list is
+            // opened here (a mode switch, in the demo); off, it stays gone for the rest of this
+            // picker. The app persists that across openings, which a demo must not do — it never
+            // writes the user's settings.
+            var bubbleGoneForSession by remember { mutableStateOf(false) }
             key(mode) {
                 // Declared inside the key, so every mode starts from the same place: a freshly opened
                 // list and its button back. Kept outside, the state survived a mode switch and the
-                // button looked like the thing that controlled how the next mode opened.
+                // button looked like the thing controlling how the next mode opened.
                 var collapsed by remember { mutableStateOf(false) }
                 var bubbleRemoved by remember { mutableStateOf(false) }
+                val bubbleGone = bubbleRemoved || (!peekBubbleReturns && bubbleGoneForSession)
                 Box(Modifier.fillMaxSize()) {
                     when (mode) {
                         AppMode.LIST -> DemoSheet(
@@ -219,14 +238,18 @@ fun ModeDemo(
                     }
                     // The floating button only exists in LIST and MIX (that is what the setting says)
                     // and only while the list is down, exactly as in the app.
-                    if (showPeekBubble && mode != AppMode.DIRECT && collapsed && !bubbleRemoved) {
+                    if (showPeekBubble && mode != AppMode.DIRECT && collapsed && !bubbleGone) {
                         DemoPeekBubble(
                             panelWidth = panelWidth,
                             panelHeight = panelHeight,
                             size = PEEK_BUBBLE * peekBubbleSize,
                             alpha = peekBubbleAlpha,
+                            dockPeek = peekBubbleDockPeek,
                             onOpen = { collapsed = false },
-                            onRemove = { bubbleRemoved = true }
+                            onRemove = {
+                                bubbleRemoved = true
+                                bubbleGoneForSession = true
+                            }
                         )
                     }
                 }
@@ -371,9 +394,10 @@ private fun DemoSheet(
 
 /**
  * The floating button the list collapses into: the real one's size, colour, opacity and corner, from
- * the same settings that scale and fade it in the app. It can be dragged anywhere in the panel — the
- * position is clamped to the panel's edges — tapped to bring the list back, or removed by tapping the
- * ✕ (which is also what dropping it on that ✕ does, the way the app's drag-to-remove works).
+ * the same settings that scale, fade and dock it in the app. It can be dragged anywhere in the panel,
+ * tapped to bring the list back, or removed by dropping it on the ✕ (which the app's drag-to-remove
+ * does too). Letting go near a side edge tucks it into that edge the way the app does: mostly off the
+ * panel, scaled down and faded, with `peekBubbleDockPeek` deciding how much of it stays visible.
  */
 @Composable
 private fun BoxScope.DemoPeekBubble(
@@ -381,37 +405,49 @@ private fun BoxScope.DemoPeekBubble(
     panelHeight: Dp,
     size: Dp,
     alpha: Float,
+    dockPeek: Float,
     onOpen: () -> Unit,
     onRemove: () -> Unit
 ) {
     val density = LocalDensity.current
-    var drag by remember { mutableStateOf(Offset.Zero) }
-    var dragging by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     val sizePx = with(density) { size.toPx() }
     val panelWidthPx = with(density) { panelWidth.toPx() }
     val panelHeightPx = with(density) { panelHeight.toPx() }
     val marginPx = with(density) { PEEK_MARGIN.toPx() }
+    val dockZonePx = with(density) { DOCK_ZONE.toPx() }
+    val dockPeekPx = (sizePx * dockPeek).coerceAtLeast(1f)
     // Where the app parks it: bottom-end, a little clear of the very edge.
     val restX = panelWidthPx - sizePx - marginPx
     val restY = panelHeightPx - sizePx - marginPx * 3
-    val centerX = restX + drag.x + sizePx / 2
-    val centerY = restY + drag.y + sizePx / 2
+    // Fully off to one side, with dockPeekPx of it still showing.
+    fun dockedX(side: Int) = if (side < 0) dockPeekPx - sizePx else panelWidthPx - dockPeekPx
+
+    val position = remember(panelWidthPx, panelHeightPx) {
+        Animatable(Offset(restX, restY), Offset.VectorConverter)
+    }
+    var dockedSide by remember { mutableIntStateOf(0) }
+    var dragging by remember { mutableStateOf(false) }
     val trashCenterX = panelWidthPx / 2
     val trashCenterY = panelHeightPx - with(density) { TRASH_BOTTOM_MARGIN.toPx() } -
         with(density) { TRASH_SIZE.toPx() } / 2
     val snapPx = with(density) { TRASH_SNAP.toPx() }
+
     // Evaluated from the position passed in, because a lambda handed to detectDragGestures keeps the
-    // values it captured when it was created — reading the composed `overTrash` there meant the drop
-    // always saw "not over the ✕" and the button could never be thrown away.
+    // values it captured when it was created — reading a composed value there meant a drop always saw
+    // "not over the ✕" and the button could never be thrown away.
     fun overTrashAt(position: Offset): Boolean {
-        val cx = restX + position.x + sizePx / 2
-        val cy = restY + position.y + sizePx / 2
+        val cx = position.x + sizePx / 2
+        val cy = position.y + sizePx / 2
         return abs(cx - trashCenterX) < snapPx && abs(cy - trashCenterY) < snapPx
     }
-    val overTrash = overTrashAt(drag)
+    fun clamped(position: Offset) = Offset(
+        position.x.coerceIn(0f, panelWidthPx - sizePx),
+        position.y.coerceIn(0f, panelHeightPx - sizePx)
+    )
+    val overTrash = overTrashAt(position.value)
 
-    // Shown only while the button is being dragged, exactly like the app's ✕ target — it is not a
-    // permanent part of the demo.
+    // Shown only while the button is being dragged, exactly like the app's ✕ target.
     if (dragging) {
         Box(
             Modifier
@@ -431,28 +467,49 @@ private fun BoxScope.DemoPeekBubble(
         }
     }
 
+    val docked by animateFloatAsState(if (dockedSide != 0) 1f else 0f, tween(DOCK_ANIM_MS.toInt()), label = "docked")
     Box(
         Modifier
-            // TopStart, because the offsets below are absolute inside the panel: aligning to the
-            // bottom as well pushed the button a whole panel-height off the bottom edge, which is why
-            // it was invisible while its ✕ was still on screen.
+            // TopStart, because this position is absolute inside the panel: aligning to the bottom as
+            // well pushed the button a whole panel-height off the bottom edge, which is why it was
+            // invisible while its ✕ was still on screen.
             .align(Alignment.TopStart)
-            .offset { IntOffset((restX + drag.x).roundToInt(), (restY + drag.y).roundToInt()) }
+            .offset { IntOffset(position.value.x.roundToInt(), position.value.y.roundToInt()) }
             .size(size)
-            .graphicsLayer { this.alpha = alpha }
+            .graphicsLayer {
+                this.alpha = alpha * (1f - docked * (1f - DOCK_ALPHA_FACTOR))
+                val s = 1f - docked * (1f - DOCK_SCALE)
+                scaleX = s
+                scaleY = s
+            }
             .background(PEEK_COLOR, CircleShape)
             .pointerInput(Unit) { detectTapGestures { onOpen() } }
             .pointerInput(sizePx) {
                 detectDragGestures(
-                    onDragStart = { dragging = true },
+                    onDragStart = {
+                        dragging = true
+                        // Pulling it out of the edge brings it back to full size, like the app.
+                        dockedSide = 0
+                    },
                     onDragEnd = {
                         dragging = false
-                        if (overTrashAt(drag)) onRemove() else drag = clampInside(drag, restX, restY, sizePx, panelWidthPx, panelHeightPx)
+                        val dropped = position.value
+                        when {
+                            overTrashAt(dropped) -> onRemove()
+                            dropped.x <= dockZonePx -> {
+                                dockedSide = -1
+                                scope.launch { position.animateTo(Offset(dockedX(-1), dropped.y), tween(DOCK_ANIM_MS.toInt())) }
+                            }
+                            dropped.x >= panelWidthPx - sizePx - dockZonePx -> {
+                                dockedSide = 1
+                                scope.launch { position.animateTo(Offset(dockedX(1), dropped.y), tween(DOCK_ANIM_MS.toInt())) }
+                            }
+                        }
                     },
                     onDragCancel = { dragging = false },
                     onDrag = { change, delta ->
                         change.consume()
-                        drag = clampInside(drag + delta, restX, restY, sizePx, panelWidthPx, panelHeightPx)
+                        scope.launch { position.snapTo(clamped(position.value + delta)) }
                     }
                 )
             },
@@ -466,13 +523,6 @@ private fun BoxScope.DemoPeekBubble(
         )
     }
 }
-
-/** Keeps the button inside the panel: it can be parked anywhere, but never half off the edge. */
-private fun clampInside(drag: Offset, restX: Float, restY: Float, sizePx: Float, panelWidthPx: Float, panelHeightPx: Float): Offset =
-    Offset(
-        drag.x.coerceIn(-restX, (panelWidthPx - sizePx - restX).coerceAtLeast(-restX)),
-        drag.y.coerceIn(-restY, (panelHeightPx - sizePx - restY).coerceAtLeast(-restY))
-    )
 
 /**
  * Our own drawing of the launcher's long-press menu. The real one belongs to the launcher and cannot
@@ -578,8 +628,9 @@ fun ShortcutMenuOverlay(
 /**
  * The launcher icon the user actually has — whichever variant is enabled in Settings, not a stand-in —
  * because that is the icon on their home screen and the one the long-press menu belongs to. Holding it
- * opens that menu; tapping it shows what pressing it does instead: the item below opens. The line under
- * it carries the opening item's own icon, so "which app" is answered by the app itself.
+ * opens that menu; tapping it shows what pressing it does instead, as a burst of light from the icon
+ * (nothing is launched, and nothing pops up to say which item it was — the line underneath already
+ * names it). The item's own icon is there too, so "which app" is answered by the app itself.
  */
 @Composable
 private fun HeroIcon(
@@ -587,33 +638,36 @@ private fun HeroIcon(
     onShowShortcuts: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var opened by remember { mutableStateOf(false) }
-    LaunchedEffect(opened) {
-        if (opened) {
-            delay(OPENED_MS)
-            opened = false
-        }
-    }
-    val pop by animateFloatAsState(
-        targetValue = if (opened) 1.12f else 1f,
-        animationSpec = tween(OPENED_MS.toInt() / 3),
-        label = "heroPop"
-    )
+    val scope = rememberCoroutineScope()
+    val burst = remember { Animatable(1f) }
+    // The kick at the start of the burst, so the icon itself reacts to the tap.
+    val pop = 1f + 0.12f * (1f - burst.value).coerceIn(0f, 1f)
+
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            Modifier
-                .graphicsLayer {
-                    scaleX = pop
-                    scaleY = pop
-                }
-                .pointerInput(target) {
-                    detectTapGestures(
-                        onTap = { opened = true },
-                        onLongPress = { onShowShortcuts() }
-                    )
-                }
-        ) {
-            LauncherIcon(HERO_ICON)
+        Box(Modifier.size(HERO_ICON * 2f), contentAlignment = Alignment.Center) {
+            if (burst.value < 1f) {
+                Canvas(Modifier.matchParentSize()) { firework(burst.value) }
+            }
+            Box(
+                Modifier
+                    .graphicsLayer {
+                        scaleX = pop
+                        scaleY = pop
+                    }
+                    .pointerInput(target) {
+                        detectTapGestures(
+                            onTap = {
+                                scope.launch {
+                                    burst.snapTo(0f)
+                                    burst.animateTo(1f, tween(FIREWORK_MS, easing = LinearEasing))
+                                }
+                            },
+                            onLongPress = { onShowShortcuts() }
+                        )
+                    }
+            ) {
+                LauncherIcon(HERO_ICON)
+            }
         }
         Row(
             Modifier.padding(top = 10.dp),
@@ -627,17 +681,24 @@ private fun HeroIcon(
                 color = Color.White.copy(alpha = 0.92f)
             )
         }
-        if (opened) {
-            Text(
-                "👍 " + stringResource(R.string.mode_demo_opened, labelOf(target, target.id + 1)),
-                style = MaterialTheme.typography.labelMedium,
-                color = Color.White,
-                modifier = Modifier
-                    .padding(top = 8.dp)
-                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50))
-                    .padding(horizontal = 12.dp, vertical = 5.dp)
-            )
-        }
+    }
+}
+
+/** Sparks thrown outwards from the icon: the demo's version of "this is what a tap does". */
+private fun DrawScope.firework(progress: Float) {
+    val center = size.center
+    val reach = size.minDimension / 2f * 0.92f
+    val distance = reach * (0.2f + 0.8f * progress)
+    val alpha = (1f - progress).coerceIn(0f, 1f)
+    val radius = 3.5.dp.toPx() * (1f - progress * 0.5f)
+    for (index in 0 until FIREWORK_COLORS.size * 3) {
+        val angle = (index * 2.0 * PI / (FIREWORK_COLORS.size * 3)).toFloat()
+        drawCircle(
+            color = FIREWORK_COLORS[index % FIREWORK_COLORS.size],
+            radius = radius,
+            center = Offset(center.x + cos(angle) * distance, center.y + sin(angle) * distance),
+            alpha = alpha
+        )
     }
 }
 
@@ -757,6 +818,12 @@ private val PEEK_MARGIN = 20.dp
 private val TRASH_SIZE = 64.dp
 private val TRASH_BOTTOM_MARGIN = 24.dp
 private val TRASH_SNAP = 72.dp
+
+/** Straight from QuickPickPeekOverlayService: the same edge zone, scale and fade when docked. */
+private val DOCK_ZONE = 28.dp
+private const val DOCK_ANIM_MS = 300L
+private const val DOCK_SCALE = 0.9f
+private const val DOCK_ALPHA_FACTOR = 0.6f
 private val PEEK_COLOR = Color(0xCC3C4043)
 private val TRASH_IDLE = Color(0xE6D32F2F)
 private val TRASH_ACTIVE = Color(0xFFEF5350)
@@ -770,7 +837,15 @@ private val BRAND_GRADIENT = listOf(
 )
 private const val MARK_ALPHA = 0.16f
 private const val WALLPAPER_SCRIM = 0.18f
-private const val OPENED_MS = 1400L
+/** Bright sparks, because on this backdrop the brand's own blues would not read as a burst. */
+private val FIREWORK_COLORS = listOf(
+    Color(0xFFFFFFFF),
+    Color(0xFFFFD166),
+    Color(0xFFEF476F),
+    Color(0xFF06D6A0),
+    Color(0xFFA175F0)
+)
+private const val FIREWORK_MS = 650
 
 /** The same glyph and colour ShortcutSync paints on the reserved Configure shortcut. */
 private const val CONFIGURE_GLYPH = "\u2699"

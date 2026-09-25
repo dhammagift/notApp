@@ -155,6 +155,8 @@ private fun ModePickerDialog(
     useAllSlotsInDirectMode: Boolean,
     peekBubbleSize: Float,
     peekBubbleAlpha: Float,
+    peekBubbleDockPeek: Float,
+    peekBubbleReturns: Boolean,
     slots: List<ShortcutSlot>,
     onModeSelected: (AppMode) -> Unit,
     onDismiss: () -> Unit
@@ -300,6 +302,8 @@ private fun ModePickerDialog(
                         useAllSlotsInDirectMode = useAllSlotsInDirectMode,
                         peekBubbleSize = peekBubbleSize,
                         peekBubbleAlpha = peekBubbleAlpha,
+                        peekBubbleDockPeek = peekBubbleDockPeek,
+                        peekBubbleReturns = peekBubbleReturns,
                         narrowSheet = wideLandscape,
                         onShowShortcuts = { shortcutsShown = true },
                         modifier = Modifier
@@ -336,6 +340,8 @@ fun ConfigScreen(
     useAllSlotsInDirectMode: Boolean,
     peekBubbleSize: Float,
     peekBubbleAlpha: Float,
+    peekBubbleDockPeek: Float,
+    peekBubbleReturns: Boolean,
     hint: UiHint?,
     onHintShown: (UiHint) -> Unit,
     onEditSlot: (Int) -> Unit,
@@ -414,6 +420,8 @@ fun ConfigScreen(
                             useAllSlotsInDirectMode = useAllSlotsInDirectMode,
                             peekBubbleSize = peekBubbleSize,
                             peekBubbleAlpha = peekBubbleAlpha,
+                            peekBubbleDockPeek = peekBubbleDockPeek,
+                            peekBubbleReturns = peekBubbleReturns,
                             slots = slots,
                             // The dialog deliberately stays open on a choice: the example at the
                             // bottom is the whole point of it, and it can only show a mode once that
