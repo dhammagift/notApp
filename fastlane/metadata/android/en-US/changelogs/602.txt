@@ -1,0 +1,13 @@
+* The mode picker now shows a playable preview of the mode that is on: the real shortcut sheet,
+  the floating button, the long-press menu, the share sheet, and the options that are switched off
+  greyed out, with a link straight to the Settings row that turns them on
+* Each mode says in one line what it is: "List ~ like a folder", "Direct = your #1 app + shortcuts",
+  "Mix = Direct + List"
+* Not App may ask for a rating after 60 days installed. The card waits until it is answered:
+  "Never ask" and a tap on "Rate" are final, "Later" only hides it for that screen. Reviewing from
+  Settings counts too — it was a real review, wherever it was tapped
+* The example's sheet settles with the speed of your finger instead of its own, so it stops juddering
+* A landscape screen keeps the sheet a phone's width, and puts the mode cards beside the example
+* The overlay permission is asked for once, not on every switch to Direct or Mix
+* The floating button can be docked to the middle, sized and faded, and "bring it back after ✕"
+  decides whether removing it lasts
