@@ -30,6 +30,7 @@ import com.noapp.container.shortcuts.GearOverlayService
 import com.noapp.container.shortcuts.QuickPickPeekOverlayService
 import com.noapp.container.shortcuts.ShortcutSync
 import com.noapp.container.ui.ConfigScreen
+import com.noapp.container.ui.SettingsSpot
 import com.noapp.container.ui.CrashReportScreen
 import com.noapp.container.ui.SettingsScreen
 import com.noapp.container.ui.SlotEditScreen

@@ -310,9 +310,11 @@ private fun ModePickerDialog(
                         peekBubbleAlpha = peekBubbleAlpha,
                         peekBubbleDockPeek = peekBubbleDockPeek,
                         peekBubbleReturns = peekBubbleReturns,
+                        // Inside the dialog: closing it is onDismiss(), and the spot is forwarded to
+                        // the Config screen that opened the dialog.
                         onOpenSetting = { spot ->
-                            modeDialogVisible = false
-                            onOpenSettings(spot)
+                            onDismiss()
+                            onOpenSetting(spot)
                         },
                         narrowSheet = wideLandscape,
                         onShowShortcuts = { shortcutsShown = true },

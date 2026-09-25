@@ -56,6 +56,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import kotlinx.coroutines.delay
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
