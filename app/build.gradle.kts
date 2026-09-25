@@ -95,7 +95,12 @@ dependencies {
     testImplementation("org.json:json:20240303")
 }
 
-// Roborazzi only writes images when it is told to record; without the plugin that is this property.
+// The snapshot tests are a local tool: Robolectric renders real layouts, which needs Layoutlib and a
+// debug manifest, and neither belongs in CI. They are left out of the test run entirely unless asked
+// for, so a green build stays green and stay fast.
 tasks.withType<Test>().configureEach {
     systemProperty("roborazzi.test.record", System.getenv("RENDER_SNAPSHOTS") == "1")
+    if (System.getenv("RENDER_SNAPSHOTS") != "1") {
+        exclude("**/DemoSnapshots*")
+    }
 }
