@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -552,79 +553,85 @@ fun ConfigScreen(
         val deleteDesc = stringResource(R.string.config_delete_desc)
         val reorderDesc = stringResource(R.string.config_reorder_desc)
         val mainPositionLabel = stringResource(R.string.config_position_main)
-        LazyColumn(Modifier.padding(padding).fillMaxSize()) {
-            itemsIndexed(dragState.items, key = { _, d -> d.stableKey }) { index, draggable ->
-                val slot = draggable.slot
-                val isDragging = dragState.draggedIndex == index
-                val positionLabel = if (mode != AppMode.LIST && index == 0) mainPositionLabel else stringResource(R.string.common_item_n, index + 1)
-                val dismissState = rememberSwipeToDismissBoxState(
-                    confirmValueChange = { value ->
-                        if (value != SwipeToDismissBoxValue.Settled) {
-                            removeWithUndo(
-                                previous = slots,
-                                updated = slots.filterIndexed { i, _ -> i != index }.mapIndexed { i, s -> s.copy(id = i) },
-                                message = context.getString(R.string.config_removed_named, slot.label.ifBlank { positionLabel })
-                            )
+        Box(Modifier.padding(padding).fillMaxSize()) {
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                // Room for the two round things at the bottom: the demo button on the left, the add
+                // button on the right.
+                contentPadding = PaddingValues(bottom = 88.dp)
+            ) {
+                itemsIndexed(dragState.items, key = { _, d -> d.stableKey }) { index, draggable ->
+                    val slot = draggable.slot
+                    val isDragging = dragState.draggedIndex == index
+                    val positionLabel = if (mode != AppMode.LIST && index == 0) mainPositionLabel else stringResource(R.string.common_item_n, index + 1)
+                    val dismissState = rememberSwipeToDismissBoxState(
+                        confirmValueChange = { value ->
+                            if (value != SwipeToDismissBoxValue.Settled) {
+                                removeWithUndo(
+                                    previous = slots,
+                                    updated = slots.filterIndexed { i, _ -> i != index }.mapIndexed { i, s -> s.copy(id = i) },
+                                    message = context.getString(R.string.config_removed_named, slot.label.ifBlank { positionLabel })
+                                )
+                            }
+                            true
                         }
-                        true
-                    }
-                )
-                SwipeToDismissBox(
-                    state = dismissState,
-                    backgroundContent = {
-                        Box(
-                            Modifier.fillMaxSize().background(MaterialTheme.colorScheme.errorContainer).padding(horizontal = 20.dp),
-                            contentAlignment = Alignment.CenterEnd
-                        ) {
-                            Icon(Icons.Default.Delete, contentDescription = deleteDesc, tint = MaterialTheme.colorScheme.onErrorContainer)
+                    )
+                    SwipeToDismissBox(
+                        state = dismissState,
+                        backgroundContent = {
+                            Box(
+                                Modifier.fillMaxSize().background(MaterialTheme.colorScheme.errorContainer).padding(horizontal = 20.dp),
+                                contentAlignment = Alignment.CenterEnd
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = deleteDesc, tint = MaterialTheme.colorScheme.onErrorContainer)
+                            }
                         }
-                    }
-                ) {
-                    ListItem(
-                        headlineContent = { Text(slot.label.ifBlank { positionLabel }) },
-                        supportingContent = {
-                            Text(
-                                "${slot.type?.displayName() ?: notConfiguredLabel} · $positionLabel",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        },
-                        leadingContent = { SlotIcon(slot, size = 40.dp) },
-                        trailingContent = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                // Two different facts about a row, so two different markers.
-                                // The star is "a plain tap opens this item": in DIRECT and MIX that is
-                                // slot 0, so tapping the star promotes the row to the top rather than
-                                // storing a second, competing notion of "main".
-                                // The rocket is "the Quick Settings tile launches this item" — it sits
-                                // on any row and never touches the order.
-                                // Same 24dp as the reorder handle beside them, so the row reads as one
-                                // line of controls; both markers are vectors from the icon set the app
-                                // already uses (the rocket is the tile's own drawable), never an emoji.
-                                val isTileTarget = slot.targetKey != null && slot.targetKey == tileSlot
-                                // Every inactive control in this row — star, rocket, ✕ and the reorder
-                                // handle — is the same grey at the same strength, so the row reads as one
-                                // set; only an ACTIVE star or rocket stands out, in hue and in brightness
-                                // (the filled star drawable against the outlined one does the rest).
-                                // 0.38 is Material's own disabled-content alpha: these are affordances
-                                // that must not read as buttons, especially next to a genuinely active
-                                // star or rocket (owner: "сейчас они выглядят как просто какие-то активные
-                                // кнопки… нужно ещё более прозрачные").
-                                val inactiveTint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                                Icon(
-                                    painterResource(
-                                        if (index == 0) R.drawable.ic_marker_star
-                                        else R.drawable.ic_marker_star_outline
-                                    ),
-                                    contentDescription = stringResource(R.string.config_main_marker),
-                                    tint = if (index == 0) MaterialTheme.colorScheme.primary else inactiveTint,
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clickable {
-                                        if (index != 0) {
-                                            val promoted = slots.toMutableList()
-                                                .also { it.add(0, it.removeAt(index)) }
-                                            onSlotsChanged(promoted.mapIndexed { i, s -> s.copy(id = i) })
-                                        }
+                    ) {
+                        ListItem(
+                            headlineContent = { Text(slot.label.ifBlank { positionLabel }) },
+                            supportingContent = {
+                                Text(
+                                    "${slot.type?.displayName() ?: notConfiguredLabel} · $positionLabel",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            },
+                            leadingContent = { SlotIcon(slot, size = 40.dp) },
+                            trailingContent = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    // Two different facts about a row, so two different markers.
+                                    // The star is "a plain tap opens this item": in DIRECT and MIX that is
+                                    // slot 0, so tapping the star promotes the row to the top rather than
+                                    // storing a second, competing notion of "main".
+                                    // The rocket is "the Quick Settings tile launches this item" — it sits
+                                    // on any row and never touches the order.
+                                    // Same 24dp as the reorder handle beside them, so the row reads as one
+                                    // line of controls; both markers are vectors from the icon set the app
+                                    // already uses (the rocket is the tile's own drawable), never an emoji.
+                                    val isTileTarget = slot.targetKey != null && slot.targetKey == tileSlot
+                                    // Every inactive control in this row — star, rocket, ✕ and the reorder
+                                    // handle — is the same grey at the same strength, so the row reads as one
+                                    // set; only an ACTIVE star or rocket stands out, in hue and in brightness
+                                    // (the filled star drawable against the outlined one does the rest).
+                                    // 0.38 is Material's own disabled-content alpha: these are affordances
+                                    // that must not read as buttons, especially next to a genuinely active
+                                    // star or rocket (owner: "сейчас они выглядят как просто какие-то активные
+                                    // кнопки… нужно ещё более прозрачные").
+                                    val inactiveTint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                                    Icon(
+                                        painterResource(
+                                            if (index == 0) R.drawable.ic_marker_star
+                                            else R.drawable.ic_marker_star_outline
+                                        ),
+                                        contentDescription = stringResource(R.string.config_main_marker),
+                                        tint = if (index == 0) MaterialTheme.colorScheme.primary else inactiveTint,
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clickable {
+                                            if (index != 0) {
+                                                val promoted = slots.toMutableList()
+                                                    .also { it.add(0, it.removeAt(index)) }
+                                                onSlotsChanged(promoted.mapIndexed { i, s -> s.copy(id = i) })
+    }
                                         scope.launch {
                                             snackbarHostState.showSnackbar(
                                                 context.getString(R.string.config_main_marker_hint)
@@ -709,29 +716,19 @@ fun ConfigScreen(
                 }
                 HorizontalDivider()
             }
-            // The list ends a long way above the bottom of the screen, and this is the one thing worth
-            // putting there: a way to see what the mode you are on actually does, without changing it.
-            item(key = "demo") {
-                // A button, not another row: rows above it are items to edit, and this one is not an
-                // item. The empty half of the screen is where it belongs.
-                Column(
-                    Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    FilledTonalButton(onClick = { modeDialogVisible = true }) {
-                        LauncherIconSmall()
-                        Spacer(Modifier.width(10.dp))
-                        Text(stringResource(R.string.mode_demo_label))
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    Text(
-                        stringResource(R.string.config_demo_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-                }
+            // Pinned to the bottom-left rather than trailing the items: as a list row it moved every
+            // time an item was added or removed, and it is not an item.
+            FilledTonalButton(
+                onClick = { modeDialogVisible = true },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 16.dp, bottom = 16.dp)
+            ) {
+                LauncherIconSmall()
+                Spacer(Modifier.width(10.dp))
+                Text(stringResource(R.string.mode_demo_label))
             }
+        }
         }
     }
 

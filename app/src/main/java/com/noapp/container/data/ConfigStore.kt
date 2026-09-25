@@ -85,7 +85,12 @@ object ConfigStore {
             peekBubbleReturns = root.optBoolean("peekBubbleReturns", false),
             peekBubbleSize = root.optDouble("peekBubbleSize", 1.0).toFloat().coerceIn(PEEK_SIZE_MIN, PEEK_SIZE_MAX),
             peekBubbleAlpha = root.optDouble("peekBubbleAlpha", 0.9).toFloat().coerceIn(PEEK_ALPHA_MIN, PEEK_ALPHA_MAX),
-            peekBubbleDockPeek = root.optDouble("peekBubbleDockPeek", 0.5).toFloat().coerceIn(PEEK_DOCK_MIN, PEEK_DOCK_MAX),
+            // Anything at or below the old default was never a choice — it is what the previous
+            // range clamped to — so it comes back as the new middle instead of a sliver.
+            peekBubbleDockPeek = root.optDouble("peekBubbleDockPeek", AppConfig.DEFAULT_DOCK_PEEK.toDouble())
+                .toFloat()
+                .let { if (it <= 0.45f) AppConfig.DEFAULT_DOCK_PEEK else it }
+                .coerceIn(PEEK_DOCK_MIN, PEEK_DOCK_MAX),
             showRecentApps = root.optBoolean("showRecentApps", false),
             theme = runCatching { AppTheme.valueOf(root.optString("theme", AppTheme.SYSTEM.name)) }
                 .getOrDefault(AppTheme.SYSTEM),

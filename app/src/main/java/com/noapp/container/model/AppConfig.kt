@@ -46,7 +46,7 @@ data class AppConfig(
     // own (see QuickPickPeekOverlayService), so one control covers both states.
     val peekBubbleAlpha: Float = 0.9f,
     // Fraction of the floating button left visible when tucked into a screen edge.
-    val peekBubbleDockPeek: Float = 0.5f,
+    val peekBubbleDockPeek: Float = DEFAULT_DOCK_PEEK,
     // LIST/MIX only, off by default (needs the user to separately grant Usage Access):
     // shows a compact icon-only row of recently-used apps above the configured items —
     // see recents/RecentApps.kt.
@@ -63,6 +63,11 @@ data class AppConfig(
     val tileSlot: String = TILE_NONE
 ) {
     companion object {
+        /**
+         * Where the collapsed button sits by default: the middle of the Settings slider. The old
+         * default was near the tucked-in end, where it read as a bug rather than a choice.
+         */
+        const val DEFAULT_DOCK_PEEK = 0.625f
         /** tileSlot meaning "the tile is a second launcher icon, not a slot shortcut". */
         const val TILE_NONE = ""
     }
