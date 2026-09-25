@@ -181,11 +181,10 @@ fun ModeDemo(
             val panelHeight = maxHeight
             DemoLabel()
             DemoCaseSwitch(
-                    shareCase = shareCase,
-                    onChange = { shareCase = it },
-                    modifier = Modifier.align(Alignment.TopEnd)
-                )
-            }
+                shareCase = shareCase,
+                onChange = { shareCase = it },
+                modifier = Modifier.align(Alignment.TopEnd)
+            )
             if (shareCase) {
                 // Without this the share variant is just an oddly-annotated list; with it, it says
                 // where the screen comes from, which is the thing a user has never seen.
