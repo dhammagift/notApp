@@ -1,5 +1,7 @@
 package com.noapp.container.ui
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings as AndroidSettings
@@ -84,6 +86,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
@@ -137,6 +140,7 @@ private val CARDS_MAX_HEIGHT = 340.dp
  * height comes out of the example's share, which is a preview and can afford it.
  */
 private val CARDS_MAX_HEIGHT_TALL = 420.dp
+private const val REVEAL_OUT_MS = 200
 private const val CARDS_TALL_FRACTION = 0.47f
 
 
@@ -258,14 +262,43 @@ private fun ModePickerDialog(
         )
     }
 
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
+    // The picker grows out of the chip that opened it (top right) and folds back into it, instead of a
+    // window simply being there: the tap on the chip gets an answer.
+    var revealed by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { revealed = true }
+    val reveal by animateFloatAsState(
+        if (revealed) 1f else 0f,
+        if (revealed) spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow) else tween(REVEAL_OUT_MS),
+        label = "modeReveal"
+    )
+    val revealScope = rememberCoroutineScope()
+    val closeAnimated: () -> Unit = {
+        if (revealed) {
+            revealed = false
+            revealScope.launch {
+                delay(REVEAL_OUT_MS.toLong())
+                onDismiss()
+            }
+        }
+    }
+
+    Dialog(onDismissRequest = closeAnimated, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            Modifier.fillMaxSize().graphicsLayer {
+                alpha = reveal.coerceIn(0f, 1f)
+                val grow = 0.82f + 0.18f * reveal
+                scaleX = grow
+                scaleY = grow
+                transformOrigin = TransformOrigin(0.86f, 0.04f)
+            },
+            color = MaterialTheme.colorScheme.surface
+        ) {
             Box(Modifier.fillMaxSize()) {
                 Column(Modifier.fillMaxSize()) {
                     TopAppBar(
                         title = { Text(stringResource(R.string.config_mode_dialog_title)) },
                         navigationIcon = {
-                            IconButton(onClick = onDismiss) {
+                            IconButton(onClick = closeAnimated) {
                                 Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_close))
                             }
                         }
@@ -292,7 +325,7 @@ private fun ModePickerDialog(
                             },
                             narrowSheet = wideLandscape,
                             onShowShortcuts = { shortcutsShown = true },
-                            modifier = demoModifier
+                            modifier = demoModifier.riseInOnAppear(3, baseDelayMillis = 120)
                         )
                     }
                     if (wideLandscape) {
@@ -467,8 +500,14 @@ fun ConfigScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
+                    val chipSource = remember { MutableInteractionSource() }
                     AssistChip(
-                        onClick = { modeDialogVisible = true },
+                        onClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                            modeDialogVisible = true
+                        },
+                        interactionSource = chipSource,
+                        modifier = Modifier.pressScale(chipSource).animateContentSize(),
                         label = {
                             AnimatedContent(mode, transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(120)) }, label = "modeChip") {
                                 Text(stringResource(it.labelRes()))
@@ -676,6 +715,7 @@ fun ConfigScreen(
                                         contentDescription = stringResource(R.string.config_main_marker),
                                         tint = if (index == 0) MaterialTheme.colorScheme.primary else inactiveTint,
                                         modifier = Modifier
+                                            .popOnChange(index == 0)
                                             .size(24.dp)
                                             .clickable {
                                             view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
@@ -697,6 +737,7 @@ fun ConfigScreen(
                                     contentDescription = stringResource(R.string.config_tile_marker),
                                     tint = if (isTileTarget) MaterialTheme.colorScheme.primary else inactiveTint,
                                     modifier = Modifier
+                                        .popOnChange(isTileTarget)
                                         .size(24.dp)
                                         .clickable(enabled = slot.isConfigured) {
                                             val key = slot.targetKey ?: return@clickable
@@ -745,6 +786,7 @@ fun ConfigScreen(
                             }
                         },
                         modifier = Modifier
+                            .riseInOnAppear(index)
                             .zIndex(if (isDragging || lift > 0f) 1f else 0f)
                             .then(if (isDragging) Modifier else Modifier.animateItem())
                             .graphicsLayer {
@@ -825,7 +867,7 @@ fun ConfigScreen(
 @Composable
 private fun ModeCards(currentMode: AppMode, onSelect: (AppMode) -> Unit, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        AppMode.entries.forEach { candidate ->
+        AppMode.entries.forEachIndexed { index, candidate ->
             val selected = candidate == currentMode
             Surface(
                 onClick = { onSelect(candidate) },
@@ -835,7 +877,15 @@ private fun ModeCards(currentMode: AppMode, onSelect: (AppMode) -> Unit, modifie
                     tween(220),
                     label = "modeCard"
                 ).value,
-                modifier = Modifier.fillMaxWidth()
+                // Explicit, and animated on the same clock as the fill. Left to Surface it works the
+                // text colour out from the fill, and a fill that is halfway between two theme colours
+                // matches none of them: the text fell back to black for the length of the fade.
+                contentColor = animateColorAsState(
+                    if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tween(220),
+                    label = "modeCardText"
+                ).value,
+                modifier = Modifier.fillMaxWidth().riseInOnAppear(index, baseDelayMillis = 120)
             ) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
                     Column(Modifier.weight(1f)) {
@@ -876,15 +926,25 @@ private fun ModeCards(currentMode: AppMode, onSelect: (AppMode) -> Unit, modifie
                         }
                         Text(description, style = MaterialTheme.typography.bodyMedium)
                     }
-                    AnimatedVisibility(
-                        visible = selected,
-                        enter = fadeIn(tween(180)) + scaleIn(spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium), initialScale = 0.3f),
-                        exit = fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.3f)
-                    ) {
+                    // A slot that is always there, so choosing a mode never changes how wide the text
+                    // beside it is: the mark only fades and scales inside it. (Animating the icon's
+                    // presence instead resized the text column every frame and the description
+                    // re-wrapped its lines while the card changed colour.)
+                    val checkProgress by animateFloatAsState(
+                        if (selected) 1f else 0f,
+                        spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium),
+                        label = "modeCheck"
+                    )
+                    Box(Modifier.padding(start = 8.dp).size(24.dp), contentAlignment = Alignment.Center) {
                         Icon(
                             Icons.Default.Check,
                             contentDescription = null,
-                            modifier = Modifier.padding(start = 8.dp)
+                            modifier = Modifier.graphicsLayer {
+                                alpha = checkProgress.coerceIn(0f, 1f)
+                                scaleX = checkProgress
+                                scaleY = checkProgress
+                                rotationZ = (1f - checkProgress) * -90f
+                            }
                         )
                     }
                 }

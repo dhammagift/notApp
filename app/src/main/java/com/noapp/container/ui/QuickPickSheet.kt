@@ -1,5 +1,7 @@
 package com.noapp.container.ui
 
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.runtime.mutableIntStateOf
 import android.app.Activity
 import android.content.Intent
 import android.provider.Settings
@@ -80,8 +82,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
-private const val ENTER_EXIT_ANIM_MS = 260
-
 /**
  * Settling uses a spring rather than a fixed-duration tween so the drag's velocity can carry into the
  * animation — a tween ignores it, which is what made a flick feel like it was put down by someone else.
@@ -145,7 +145,16 @@ fun QuickPickSheet(
     var dragOffset by remember { mutableFloatStateOf(0f) }
     var dismissed by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) { offsetY.animateTo(0f, tween(ENTER_EXIT_ANIM_MS)) }
+    // Rises from just under its own bottom edge, measured, not from 1200dp away: with the whole
+    // distance eased over a fraction of a second, the visible part of the trip lasted a few
+    // frames and the sheet looked like it had simply appeared. A spring with a little overshoot
+    // makes it arrive, so it reads as something of ours sliding over the app underneath.
+    var sheetHeightPx by remember { mutableIntStateOf(0) }
+    LaunchedEffect(sheetHeightPx > 0) {
+        if (sheetHeightPx == 0) return@LaunchedEffect
+        offsetY.snapTo(sheetHeightPx.toFloat())
+        offsetY.animateTo(0f, spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessLow))
+    }
 
     fun requestDismiss(velocity: Float = 0f) {
         if (dismissed) return
@@ -207,6 +216,7 @@ fun QuickPickSheet(
                 .align(Alignment.BottomCenter)
                 .widthIn(max = if (wideLandscape) SHEET_MAX_WIDTH else Dp.Unspecified)
                 .fillMaxWidth()
+                .onSizeChanged { if (sheetHeightPx == 0) sheetHeightPx = it.height }
                 .offset { IntOffset(0, (offsetY.value + dragOffset).roundToInt()) }
                 .draggable(
                     orientation = Orientation.Vertical,
@@ -269,7 +279,8 @@ fun QuickPickSheet(
                         Icon(
                             Icons.Default.Settings,
                             contentDescription = stringResource(R.string.quick_pick_configure_desc),
-                            modifier = Modifier.spinInOnAppear()
+                            // Waits for the sheet to land, then turns a full circle into place.
+                            modifier = Modifier.spinInOnAppear(fromDegrees = -360f, delayMillis = 320)
                         )
                     }
                 }
@@ -286,7 +297,7 @@ fun QuickPickSheet(
                         ListItem(
                             headlineContent = { Text(slot.label.ifBlank { stringResource(R.string.common_item_n, slot.id + 1) }) },
                             leadingContent = { SlotIcon(slot, size = 32.dp) },
-                            modifier = Modifier.riseInOnAppear(index).clickable {
+                            modifier = Modifier.riseInOnAppear(index, baseDelayMillis = 260).clickable {
                                 ActionDispatcher.execute(context, slot, sharedText)
                                 leaveWithPeek()
                             }

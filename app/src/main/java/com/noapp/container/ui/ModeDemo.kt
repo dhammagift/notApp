@@ -1211,6 +1211,12 @@ private fun labelOf(slot: ShortcutSlot, number: Int): String =
  * wallpaper — reading that is restricted on recent Android versions — but it does have to look like a
  * screen, which a flat surface colour never did.
  */
+@Composable
+fun Modifier.brandWallpaperBackground(): Modifier {
+    val mark = painterResource(R.drawable.ic_not_app_mark)
+    return drawBehind { brandWallpaper(mark) }
+}
+
 private fun DrawScope.brandWallpaper(mark: Painter) {
     drawRect(
         Brush.linearGradient(
