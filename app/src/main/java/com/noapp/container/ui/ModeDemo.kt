@@ -998,7 +998,13 @@ private fun DemoIconBlock(
     val pop = 1f + 0.12f * (1f - burst.value).coerceIn(0f, 1f)
     val opened = burst.value < 1f
 
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+    // A fixed width on purpose: as a wrap-content column the icon's own place moved every time the
+    // caption under it changed length ("Opens right away" vs "Opened"), which read as the icon
+    // twitching around.
+    Column(
+        modifier.width(ICON_BLOCK_WIDTH),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         Box(Modifier.size(HOME_ICON), contentAlignment = Alignment.Center) {
             if (burst.value < 1f) {
                 // requiredSize, not matchParentSize: a canvas in the layout flow used to make this
@@ -1037,24 +1043,29 @@ private fun DemoIconBlock(
             if (mode == AppMode.LIST) {
                 Text(
                     stringResource(R.string.mode_demo_list_opens),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.92f)
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.92f),
+                    textAlign = TextAlign.Center,
+                    maxLines = 2
                 )
             } else if (opened) {
                 Text("\u2713", style = MaterialTheme.typography.titleSmall, color = OPENED_CHECK)
                 Spacer(Modifier.width(6.dp))
                 Text(
                     stringResource(R.string.mode_demo_opened, labelOf(target, target.id + 1)),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2
                 )
             } else {
-                DemoIcon(target, target.id + 1, 20.dp)
-                Spacer(Modifier.width(6.dp))
+                DemoIcon(target, target.id + 1, 18.dp)
+                Spacer(Modifier.width(5.dp))
                 Text(
                     stringResource(R.string.mode_demo_direct_opens, labelOf(target, target.id + 1)),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.92f)
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.92f),
+                    maxLines = 2
                 )
             }
         }
@@ -1197,6 +1208,9 @@ private fun DrawScope.brandWallpaper(mark: Painter) {
 private val DEMO_PADDING = 8.dp
 /** The size a home-screen icon actually is. */
 private val HOME_ICON = 56.dp
+
+/** Fixed, so the icon inside it never shifts when its caption changes. */
+private val ICON_BLOCK_WIDTH = 150.dp
 /** The sheet's own dismissal numbers (QuickPickSheet): same threshold, same fling speed. */
 private val SHEET_DISMISS_THRESHOLD = 100.dp
 private val SHEET_DISMISS_VELOCITY = 1000.dp
