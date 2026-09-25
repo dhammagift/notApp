@@ -82,6 +82,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
@@ -604,27 +605,36 @@ fun ConfigScreen(
                         label = "dragOffset"
                     )
                     val positionLabel = if (mode != AppMode.LIST && index == 0) mainPositionLabel else stringResource(R.string.common_item_n, index + 1)
+                    // Rows keep their key across edits now, so the state below outlives a reorder: what it
+                    // calls has to read the current index and list, not the ones from when it was made.
+                    val currentIndex by rememberUpdatedState(index)
+                    val currentOnSlotsChanged by rememberUpdatedState(onSlotsChanged)
+                    val swipeRemove by rememberUpdatedState {
+                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        removeWithUndo(
+                            previous = slots,
+                            updated = slots.filterIndexed { i, _ -> i != index }.mapIndexed { i, s -> s.copy(id = i) },
+                            message = context.getString(R.string.config_removed_named, slot.label.ifBlank { positionLabel })
+                        )
+                    }
                     val dismissState = rememberSwipeToDismissBoxState(
                         confirmValueChange = { value ->
-                            if (value != SwipeToDismissBoxValue.Settled) {
-                                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                removeWithUndo(
-                                    previous = slots,
-                                    updated = slots.filterIndexed { i, _ -> i != index }.mapIndexed { i, s -> s.copy(id = i) },
-                                    message = context.getString(R.string.config_removed_named, slot.label.ifBlank { positionLabel })
-                                )
-                            }
+                            if (value != SwipeToDismissBoxValue.Settled) swipeRemove()
                             true
                         }
                     )
                     SwipeToDismissBox(
                         state = dismissState,
                         backgroundContent = {
-                            Box(
-                                Modifier.fillMaxSize().background(MaterialTheme.colorScheme.errorContainer).padding(horizontal = 20.dp),
-                                contentAlignment = Alignment.CenterEnd
-                            ) {
-                                Icon(Icons.Default.Delete, contentDescription = deleteDesc, tint = MaterialTheme.colorScheme.onErrorContainer)
+                            // Only while a swipe is under way: a dragged row slides over this too,
+                            // and the red must not show through the gap it leaves.
+                            if (dismissState.dismissDirection != SwipeToDismissBoxValue.Settled) {
+                                Box(
+                                    Modifier.fillMaxSize().background(MaterialTheme.colorScheme.errorContainer).padding(horizontal = 20.dp),
+                                    contentAlignment = Alignment.CenterEnd
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = deleteDesc, tint = MaterialTheme.colorScheme.onErrorContainer)
+                                }
                             }
                         }
                     ) {
@@ -748,9 +758,9 @@ fun ConfigScreen(
                                 detectDragGesturesAfterLongPress(
                                     onDragStart = {
                                         view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                        dragState.onDragStart(index)
+                                        dragState.onDragStart(currentIndex)
                                     },
-                                    onDragEnd = { dragState.onDragEnd(onSlotsChanged) },
+                                    onDragEnd = { dragState.onDragEnd(currentOnSlotsChanged) },
                                     onDragCancel = dragState::onDragCancel,
                                     onDrag = { change, drag ->
                                         change.consume()
