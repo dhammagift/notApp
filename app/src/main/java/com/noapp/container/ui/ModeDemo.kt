@@ -212,6 +212,9 @@ fun ModeDemo(
                 // button looked like the thing controlling how the next mode opened.
                 var collapsed by remember { mutableStateOf(false) }
                 var bubbleRemoved by remember { mutableStateOf(false) }
+                // Bumped by a tap on the icon in List: the sheet dips and springs back, so the tap
+                // reads as "that is what opens the list" instead of doing nothing visible.
+                var listPulse by remember { mutableIntStateOf(0) }
                 val bubbleGone = bubbleRemoved || (!peekBubbleReturns && bubbleGoneForSession)
                 Box(Modifier.fillMaxSize()) {
                     // The icon that sits on the home screen, in all three modes, at the size it is
@@ -221,7 +224,12 @@ fun ModeDemo(
                         mode = mode,
                         target = items[0],
                         onShowShortcuts = onShowShortcuts,
-                        onTap = { if (mode == AppMode.LIST) collapsed = false },
+                        onTap = {
+                            if (mode == AppMode.LIST) {
+                                collapsed = false
+                                listPulse++
+                            }
+                        },
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(top = 62.dp, end = 12.dp)
@@ -236,6 +244,7 @@ fun ModeDemo(
                             sharedText = if (shareCase) stringResource(R.string.mode_demo_share_text) else null,
                             collapsed = collapsed,
                             onCollapsedChange = { collapsed = it },
+                            pulse = listPulse,
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
                                 .widthIn(max = if (narrowSheet) SHEET_MAX_WIDTH else Dp.Unspecified)
@@ -356,8 +365,6 @@ private fun BoxScope.DemoHints(
     val lines = buildList {
         if (shareCase) {
             add(DemoHintLine(stringResource(R.string.mode_demo_share_hint)))
-        } else {
-            add(DemoHintLine(stringResource(R.string.mode_demo_long_press)))
         }
         if (recentsOff) {
             add(
@@ -556,7 +563,8 @@ private fun DemoSheet(
     sharedText: String?,
     collapsed: Boolean,
     onCollapsedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    pulse: Int = 0
 ) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
@@ -577,6 +585,13 @@ private fun DemoSheet(
     LaunchedEffect(collapsed) {
         // The floating button opens the list, and that has to move the sheet too.
         if (!dragging && !settlingFromDrag) {
+            offsetY.animateTo(if (collapsed) hiddenPx else 0f, SHEET_SPRING)
+        }
+    }
+    LaunchedEffect(pulse) {
+        if (pulse > 0 && !dragging && !settlingFromDrag) {
+            val bump = with(density) { 26.dp.toPx() }
+            offsetY.animateTo(offsetY.value + bump, tween(SHEET_BUMP_MS))
             offsetY.animateTo(if (collapsed) hiddenPx else 0f, SHEET_SPRING)
         }
     }
@@ -1034,11 +1049,14 @@ private fun DemoIconBlock(
                 LauncherIcon(HOME_ICON)
             }
         }
-        Row(
+        Column(
             Modifier
                 .padding(top = 8.dp)
                 .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(horizontal = 8.dp, vertical = 5.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+        Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (mode == AppMode.LIST) {
@@ -1069,6 +1087,15 @@ private fun DemoIconBlock(
                     maxLines = 2
                 )
             }
+        }
+            // What holding the icon does, right under the icon it belongs to.
+            Text(
+                stringResource(R.string.mode_demo_long_press),
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.75f),
+                textAlign = TextAlign.Center,
+                maxLines = 2
+            )
         }
     }
 }
@@ -1286,6 +1313,8 @@ private val PLACEHOLDER_COLORS = listOf(
     "#C97A3D",
     "#8B8D91"
 )
+
+private const val SHEET_BUMP_MS = 130
 
 /** The same settle the real sheet uses: a spring, so the drag's velocity counts. */
 private val SHEET_SPRING = spring<Float>(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)

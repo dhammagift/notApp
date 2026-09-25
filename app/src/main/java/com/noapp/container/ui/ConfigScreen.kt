@@ -110,6 +110,7 @@ import com.noapp.container.icon.LinkIcon
 import com.noapp.container.icon.SlotIcon
 import com.noapp.container.icon.displayName
 import com.noapp.container.icon.enabledLauncherComponent
+import com.noapp.container.data.PromptStore
 import com.noapp.container.model.AppConfig
 import com.noapp.container.model.AppMode
 import com.noapp.container.model.ShortcutSlot
@@ -186,17 +187,20 @@ private fun ModePickerDialog(
     }
 
     fun selectMode(candidate: AppMode) {
+        val needsOverlay = !AndroidSettings.canDrawOverlays(context)
         if (candidate != currentMode &&
             (candidate == AppMode.LIST || candidate == AppMode.MIX) &&
             showPeekBubble &&
-            !AndroidSettings.canDrawOverlays(context)
+            needsOverlay &&
+            !PromptStore.peekExplained(context)
         ) {
             pendingMode = candidate
         }
-        // Direct's gear (GearOverlayService) is always wanted now, not just when a Settings
-        // toggle is on — so ask for its permission right here too, the same way List/Mix does
-        // above for the peek bubble, instead of leaving it silently missing.
-        if (candidate != currentMode && candidate == AppMode.DIRECT && !AndroidSettings.canDrawOverlays(context)) {
+        // Direct's gear (GearOverlayService) is always wanted, not just when a Settings toggle is on —
+        // but explained once, not on every switch: with the permission declined, this dialog used to
+        // come back every single time Direct was chosen. Settings' own toggle still asks whenever the
+        // user turns it on there.
+        if (candidate != currentMode && candidate == AppMode.DIRECT && needsOverlay && !PromptStore.gearExplained(context)) {
             showGearExplainer = true
         }
         onModeSelected(candidate)
@@ -205,24 +209,32 @@ private fun ModePickerDialog(
     if (pendingMode != null) {
         PeekOverlayPermissionDialog(
             onContinue = {
+                PromptStore.markPeekExplained(context)
                 pendingMode = null
                 overlaySettingsLauncher.launch(
                     Intent(AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
                 )
             },
-            onDismiss = { pendingMode = null }
+            onDismiss = {
+                PromptStore.markPeekExplained(context)
+                pendingMode = null
+            }
         )
     }
 
     if (showGearExplainer) {
         GearOverlayPermissionDialog(
             onContinue = {
+                PromptStore.markGearExplained(context)
                 showGearExplainer = false
                 overlaySettingsLauncher.launch(
                     Intent(AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
                 )
             },
-            onDismiss = { showGearExplainer = false }
+            onDismiss = {
+                PromptStore.markGearExplained(context)
+                showGearExplainer = false
+            }
         )
     }
 

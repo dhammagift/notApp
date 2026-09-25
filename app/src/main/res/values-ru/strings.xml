@@ -97,8 +97,8 @@
     <string name="mode_demo_list_opens">Откроется список</string>
     <string name="mode_demo_label">Демо — попробуйте меня</string>
     <string name="mode_demo_share_hint">В любом приложении: выделите текст → Поделиться → Not App</string>
-    <string name="mode_demo_enable_in_settings">Включить</string>
-    <string name="mode_demo_long_press">Удержите иконку — меню шорткатов</string>
+    <string name="mode_demo_enable_in_settings">Опция</string>
+    <string name="mode_demo_long_press">Удержите — меню шорткатов</string>
     <string name="mode_demo_shortcuts_title">Меню шорткатов</string>
     <string name="mode_demo_direct_opens">Откроется сразу: %1$s</string>
     <string name="config_demo_entry">Как работает выбранный режим</string>

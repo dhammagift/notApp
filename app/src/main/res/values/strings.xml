@@ -99,8 +99,8 @@
     <string name="mode_demo_list_opens">Opens the list</string>
     <string name="mode_demo_label">Demo — try me</string>
     <string name="mode_demo_share_hint">In any app: select text → Share → Not App</string>
-    <string name="mode_demo_enable_in_settings">Turn on</string>
-    <string name="mode_demo_long_press">Hold the icon — shortcut menu</string>
+    <string name="mode_demo_enable_in_settings">Option</string>
+    <string name="mode_demo_long_press">Hold me — shortcut menu</string>
     <string name="mode_demo_shortcuts_title">Shortcut menu</string>
     <string name="mode_demo_direct_opens">Opens right away: %1$s</string>
     <string name="config_demo_entry">How the chosen mode works</string>
