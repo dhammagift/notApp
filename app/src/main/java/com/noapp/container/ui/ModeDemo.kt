@@ -195,6 +195,7 @@ fun ModeDemo(
                     textAlign = TextAlign.Center,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
+                        .widthIn(max = 280.dp)
                         .padding(top = 46.dp, start = 24.dp, end = 24.dp)
                         .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(50))
                         .padding(horizontal = 12.dp, vertical = 5.dp)
@@ -248,8 +249,10 @@ fun ModeDemo(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Center
                                 ) {
-                                    DemoHint()
-                                    Spacer(Modifier.height(8.dp))
+                                    if (!shareCase) {
+                                        DemoHint()
+                                        Spacer(Modifier.height(8.dp))
+                                    }
                                     HeroIcon(items[0], onShowShortcuts, onOpen = { gearVisible = true })
                                 }
                                 if (gearVisible) {
@@ -264,7 +267,7 @@ fun ModeDemo(
                                     // the difference between "this is what Direct is" and "this is what
                                     // it could be".
                                     DemoOffHint(
-                                        text = stringResource(R.string.settings_use_all_slots),
+                                        text = stringResource(R.string.mode_demo_short_all_slots),
                                         onClick = { onOpenSetting(SettingsSpot.USE_ALL_SLOTS) },
                                         modifier = Modifier
                                             .align(Alignment.BottomEnd)
@@ -284,7 +287,7 @@ fun ModeDemo(
                         ) {
                             Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    DemoHint()
+                                    if (!shareCase) DemoHint()
                                     Spacer(Modifier.height(6.dp))
                                     HeroIcon(items[0], onShowShortcuts)
                                 }
@@ -322,7 +325,7 @@ fun ModeDemo(
                         // The setting is off: the button is shown faded where it would sit, with the
                         // way to turn it on — seeing it is what tells the user the option exists.
                         DemoOffHint(
-                            text = stringResource(R.string.settings_show_peek_bubble),
+                            text = stringResource(R.string.mode_demo_short_float),
                             onClick = { onOpenSetting(SettingsSpot.FLOATING_BUTTON) },
                             modifier = Modifier.align(Alignment.BottomEnd).padding(PEEK_MARGIN)
                         )
@@ -414,11 +417,13 @@ private fun DemoOffHint(text: String, onClick: () -> Unit, modifier: Modifier = 
             stringResource(R.string.mode_demo_enable_in_settings) + ": " + text,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center,
             modifier = Modifier
-                .clip(RoundedCornerShape(50))
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
+                .widthIn(max = 200.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
                 .clickable { onClick() }
-                .padding(horizontal = 10.dp, vertical = 4.dp)
+                .padding(horizontal = 10.dp, vertical = 5.dp)
         )
     }
 }
@@ -438,9 +443,11 @@ private fun BoxScope.DemoPeekPill(onOpen: () -> Unit) {
             stringResource(R.string.mode_demo_pill_hint),
             style = MaterialTheme.typography.labelSmall,
             color = Color.White,
+            textAlign = TextAlign.Center,
             modifier = Modifier
-                .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(50))
-                .padding(horizontal = 10.dp, vertical = 4.dp)
+                .widthIn(max = 200.dp)
+                .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
+                .padding(horizontal = 10.dp, vertical = 5.dp)
         )
         Spacer(Modifier.height(8.dp))
         Box(
@@ -605,7 +612,7 @@ private fun DemoSheet(
                         Spacer(Modifier.width(10.dp))
                         Text(
                             stringResource(R.string.mode_demo_enable_in_settings) + ": " +
-                                stringResource(R.string.settings_show_recent_apps),
+                                stringResource(R.string.mode_demo_short_recents),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier

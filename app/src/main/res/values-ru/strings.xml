@@ -90,10 +90,13 @@
     <string name="mode_demo_share">Отправка</string>
     <string name="mode_demo_normal">Список ярлыков</string>
     <string name="mode_demo_share_text">https://dhamma.gift</string>
-    <string name="mode_demo_pill_hint">Нет разрешения «поверх других окон»: кнопка живёт только внутри приложения</string>
+    <string name="mode_demo_pill_hint">Нужно разрешение «поверх других окон»</string>
+    <string name="mode_demo_short_recents">Недавние</string>
+    <string name="mode_demo_short_float">Плавающая кнопка</string>
+    <string name="mode_demo_short_all_slots">Все слоты</string>
     <string name="mode_demo_label">Демо — попробуйте меня</string>
-    <string name="mode_demo_share_hint">Так меня выбирают в меню «Поделиться» любого приложения: то, чем поделились, попадает в этот список</string>
-    <string name="mode_demo_enable_in_settings">Включить в настройках</string>
+    <string name="mode_demo_share_hint">Выделить текст → Поделиться → Not App</string>
+    <string name="mode_demo_enable_in_settings">Включить</string>
     <string name="mode_demo_long_press">Удержите иконку — меню шорткатов</string>
     <string name="mode_demo_shortcuts_title">Меню шорткатов</string>
     <string name="mode_demo_direct_opens">Откроется сразу: %1$s</string>

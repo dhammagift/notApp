@@ -716,6 +716,7 @@ fun ConfigScreen(
                 }
                 HorizontalDivider()
             }
+            }
             // Pinned to the bottom-left rather than trailing the items: as a list row it moved every
             // time an item was added or removed, and it is not an item.
             FilledTonalButton(
@@ -730,7 +731,6 @@ fun ConfigScreen(
             }
         }
         }
-    }
 
     if (showFillDialog) {
         AppPickerDialog(
