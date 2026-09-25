@@ -133,4 +133,39 @@ fun Modifier.popOnChange(key: Any?): Modifier {
     return graphicsLayer { scaleX = pop.value; scaleY = pop.value }
 }
 
+/**
+ * Everything the list sheet does when it arrives, in one place. The real sheet (QuickPickSheet) and the
+ * mode picker's copy of it (ModeDemo's DemoSheet) both take their numbers and their modifiers from
+ * here, so the example cannot drift from the app: change a value or a step here and both change.
+ */
+object SheetMotion {
+    val enterSpring = spring<Float>(dampingRatio = 0.72f, stiffness = Spring.StiffnessLow)
+    const val GEAR_TURN_DEGREES = -360f
+    const val GEAR_DELAY_MS = 320L
+    const val ROWS_DELAY_MS = 260
+}
+
+/** The Configure gear: a full turn once the sheet has landed. */
+@Composable
+fun Modifier.sheetGearMotion(arrived: Boolean): Modifier =
+    spinInOnAppear(SheetMotion.GEAR_TURN_DEGREES, SheetMotion.GEAR_DELAY_MS, arrived)
+
+/** One row of the sheet: risen into place [index] steps after the first, once the sheet has landed. */
+@Composable
+fun Modifier.sheetRowMotion(index: Int, arrived: Boolean): Modifier =
+    riseInOnAppear(index, SheetMotion.ROWS_DELAY_MS, arrived)
+
+/**
+ * Timings of the system overlays (the Direct-mode gear, the floating button and its trash target).
+ * The overlays are plain Views and animate themselves; the demo draws the same things in Compose.
+ * Both read these.
+ */
+object OverlayMotion {
+    const val GEAR_IN_MS = 360L
+    const val GEAR_OUT_MS = 180L
+    const val BUBBLE_IN_MS = 280L
+    const val TRASH_IN_MS = 220L
+    const val TRASH_OUT_MS = 180L
+}
+
 private const val MORPH_MS = 420

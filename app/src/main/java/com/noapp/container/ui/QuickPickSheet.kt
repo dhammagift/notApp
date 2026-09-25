@@ -168,7 +168,7 @@ fun QuickPickSheet(
         delay(50)
         offsetY.snapTo(sheetHeightPx.toFloat())
         sheetRising = true
-        offsetY.animateTo(0f, spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessLow))
+        offsetY.animateTo(0f, SheetMotion.enterSpring)
     }
 
     fun requestDismiss(velocity: Float = 0f) {
@@ -295,7 +295,7 @@ fun QuickPickSheet(
                             Icons.Default.Settings,
                             contentDescription = stringResource(R.string.quick_pick_configure_desc),
                             // Waits for the sheet to land, then turns a full circle into place.
-                            modifier = Modifier.spinInOnAppear(fromDegrees = -360f, delayMillis = 320, start = sheetRising)
+                            modifier = Modifier.sheetGearMotion(sheetRising)
                         )
                     }
                 }
@@ -312,7 +312,7 @@ fun QuickPickSheet(
                         ListItem(
                             headlineContent = { Text(slot.label.ifBlank { stringResource(R.string.common_item_n, slot.id + 1) }) },
                             leadingContent = { SlotIcon(slot, size = 32.dp) },
-                            modifier = Modifier.riseInOnAppear(index, baseDelayMillis = 260, start = sheetRising).clickable {
+                            modifier = Modifier.sheetRowMotion(index, sheetRising).clickable {
                                 ActionDispatcher.execute(context, slot, sharedText)
                                 leaveWithPeek()
                             }

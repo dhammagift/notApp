@@ -1,5 +1,10 @@
 package com.noapp.container.ui
 
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.AnimatedVisibility
 import android.provider.Settings as AndroidSettings
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -268,10 +273,18 @@ fun ModeDemo(
                                 }
                             }
                             Box(Modifier.fillMaxSize()) {
-                                if (gearVisible) {
+                                AnimatedVisibility(
+                                    visible = gearVisible,
+                                    modifier = Modifier.align(Alignment.TopEnd),
+                                    enter = fadeIn(tween(OverlayMotion.GEAR_IN_MS.toInt())) +
+                                        scaleIn(tween(OverlayMotion.GEAR_IN_MS.toInt()), initialScale = 0.6f),
+                                    exit = fadeOut(tween(OverlayMotion.GEAR_OUT_MS.toInt())) +
+                                        scaleOut(tween(OverlayMotion.GEAR_OUT_MS.toInt()), targetScale = 0.6f)
+                                ) {
                                     DemoGearChip(
                                         onClick = { onOpenSetting(null) },
-                                        modifier = Modifier.align(Alignment.TopEnd)
+                                        // The real overlay turns as it grows in.
+                                        modifier = Modifier.spinInOnAppear(fromDegrees = -120f)
                                     )
                                 }
                                 if (!useAllSlotsInDirectMode) {
@@ -306,7 +319,6 @@ fun ModeDemo(
                                     .align(Alignment.BottomCenter)
                                     .widthIn(max = if (narrowSheet) SHEET_MAX_WIDTH else Dp.Unspecified)
                                     .fillMaxWidth()
-                                    .padding(horizontal = MIX_SHEET_INSET)
                             )
                         }
                     }
@@ -500,6 +512,7 @@ private fun BoxScope.DemoPeekPill(onOpen: () -> Unit) {
     ) {
         Box(
             Modifier
+                .popInOnAppear()
                 .size(PEEK_BUBBLE)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.primaryContainer)
@@ -588,6 +601,15 @@ private fun DemoSheet(
     // Same shape as the real sheet's offset: an Animatable the drag offsets live, so the release can
     // hand its velocity to the settling animation.
     val offsetY = remember { Animatable(0f) }
+    // The sheet arrives the way the real one does (SheetMotion): it rises from just under its own
+    // bottom edge on the same spring, and the gear and the rows start once it is on its way.
+    var arrived by remember { mutableStateOf(false) }
+    LaunchedEffect(sheetHeightPx > 0) {
+        if (sheetHeightPx == 0 || arrived) return@LaunchedEffect
+        offsetY.snapTo(sheetHeightPx.toFloat())
+        arrived = true
+        offsetY.animateTo(if (collapsed) hiddenPx else 0f, SheetMotion.enterSpring)
+    }
     LaunchedEffect(collapsed) {
         // The floating button opens the list, and that has to move the sheet too.
         if (!dragging && !settlingFromDrag) {
@@ -606,6 +628,8 @@ private fun DemoSheet(
         modifier = modifier
             .heightIn(max = heightCap)
             .onSizeChanged { sheetHeightPx = it.height }
+            // Invisible for the frame before it has been measured, so it never shows at rest first.
+            .graphicsLayer { alpha = if (arrived) 1f else 0f }
             .offset { IntOffset(0, (offsetY.value + dragPx).roundToInt()) }
             .draggable(
                 orientation = Orientation.Vertical,
@@ -704,7 +728,8 @@ private fun DemoSheet(
                     Icon(
                         Icons.Default.Settings,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.sheetGearMotion(arrived)
                     )
                 }
             }
@@ -729,7 +754,8 @@ private fun DemoSheet(
                                 overflow = TextOverflow.Ellipsis
                             )
                         },
-                        leadingContent = { DemoIcon(slot, startNumber + index, 32.dp) }
+                        leadingContent = { DemoIcon(slot, startNumber + index, 32.dp) },
+                        modifier = Modifier.sheetRowMotion(index, arrived)
                     )
                 }
             }
@@ -795,11 +821,14 @@ private fun BoxScope.DemoPeekBubble(
     val overTrash = overTrashAt(position.value)
 
     // Shown only while the button is being dragged, exactly like the app's ✕ target.
-    if (dragging) {
+    AnimatedVisibility(
+        visible = dragging,
+        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = TRASH_BOTTOM_MARGIN),
+        enter = fadeIn(tween(OverlayMotion.TRASH_IN_MS.toInt())) + scaleIn(tween(OverlayMotion.TRASH_IN_MS.toInt()), initialScale = 0.5f),
+        exit = fadeOut(tween(OverlayMotion.TRASH_OUT_MS.toInt())) + scaleOut(tween(OverlayMotion.TRASH_OUT_MS.toInt()), targetScale = 0.5f)
+    ) {
         Box(
             Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = TRASH_BOTTOM_MARGIN)
                 .size(TRASH_SIZE)
                 .background(if (overTrash) TRASH_ACTIVE else TRASH_IDLE, CircleShape)
                 .pointerInput(Unit) { detectTapGestures { onRemove() } },
@@ -829,6 +858,7 @@ private fun BoxScope.DemoPeekBubble(
                 scaleX = s
                 scaleY = s
             }
+            .popInOnAppear()
             .background(PEEK_COLOR, CircleShape)
             .pointerInput(Unit) { detectTapGestures { onOpen() } }
             .pointerInput(sizePx) {
@@ -1255,7 +1285,6 @@ private val ICON_BLOCK_WIDTH = 150.dp
 private val SHEET_DISMISS_THRESHOLD = 100.dp
 private val SHEET_DISMISS_VELOCITY = 1000.dp
 private val SHEET_CORNER = 22.dp
-private val MIX_SHEET_INSET = 24.dp
 
 /** Room Mix keeps for the icon block above its list, so the list can still run to the bottom. */
 private val MIX_ICON_SPACE = 190.dp
