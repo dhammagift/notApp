@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -185,24 +186,18 @@ fun ModeDemo(
                 onChange = { shareCase = it },
                 modifier = Modifier.align(Alignment.TopEnd)
             )
-            if (shareCase) {
-                // Without this the share variant is just an oddly-annotated list; with it, it says
-                // where the screen comes from, which is the thing a user has never seen.
-                Text(
-                    stringResource(R.string.mode_demo_share_hint),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        // Right under the two chips that switched this case on: a hint about the share
-                        // sheet belongs next to the control, not floating in the middle of the panel.
-                        .align(Alignment.TopEnd)
-                        .widthIn(max = 240.dp)
-                        .padding(top = 46.dp, end = 12.dp)
-                        .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                )
-            }
+            // Every hint lives in this one block, directly under the two controls: floating them next
+            // to whatever they were about meant a different mess on every screen size.
+            DemoHints(
+                mode = mode,
+                shareCase = shareCase,
+                recentsOff = !showRecentApps,
+                floatingOff = !showPeekBubble,
+                allSlotsOff = !useAllSlotsInDirectMode,
+                needsOverlay = showPeekBubble && !canOverlay,
+                onOpenSetting = onOpenSetting,
+                modifier = Modifier.align(Alignment.TopStart)
+            )
             // Keyed on the mode: switching modes must show the new example expanded, not the state
             // the previous one was left in (a sheet collapsed to its handle, say).
             // "Bring the button back after ✕": on, the button returns the next time the list is
@@ -224,7 +219,6 @@ fun ModeDemo(
                             startNumber = 1,
                             recentApps = recentApps,
                             recentsOff = !showRecentApps,
-                            onEnableRecents = { onOpenSetting(SettingsSpot.RECENT_APPS) },
                             onOpenSettings = { onOpenSetting(null) },
                             sharedText = if (shareCase) stringResource(R.string.mode_demo_share_text) else null,
                             collapsed = collapsed,
@@ -251,10 +245,6 @@ fun ModeDemo(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Center
                                 ) {
-                                    if (!shareCase) {
-                                        DemoHint()
-                                        Spacer(Modifier.height(8.dp))
-                                    }
                                     HeroIcon(items[0], onShowShortcuts, onOpen = { gearVisible = true })
                                 }
                                 if (gearVisible) {
@@ -268,12 +258,9 @@ fun ModeDemo(
                                     // a real item and the gear above is the way back. Saying so here is
                                     // the difference between "this is what Direct is" and "this is what
                                     // it could be".
-                                    DemoOffHint(
-                                        text = stringResource(R.string.mode_demo_short_all_slots),
+                                    DemoGhostBubble(
                                         onClick = { onOpenSetting(SettingsSpot.USE_ALL_SLOTS) },
-                                        modifier = Modifier
-                                            .align(Alignment.BottomEnd)
-                                            .padding(PEEK_MARGIN)
+                                        modifier = Modifier.align(Alignment.BottomEnd).padding(PEEK_MARGIN)
                                     )
                                 }
                             }
@@ -288,18 +275,13 @@ fun ModeDemo(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    if (!shareCase) DemoHint()
-                                    Spacer(Modifier.height(6.dp))
-                                    HeroIcon(items[0], onShowShortcuts)
-                                }
+                                HeroIcon(items[0], onShowShortcuts)
                             }
                             DemoSheet(
                                 items = items.drop(1),
                                 startNumber = 2,
                                 recentApps = recentApps,
                                 recentsOff = !showRecentApps,
-                                onEnableRecents = { onOpenSetting(SettingsSpot.RECENT_APPS) },
                                 onOpenSettings = { onOpenSetting(null) },
                                 sharedText = if (shareCase) stringResource(R.string.mode_demo_share_text) else null,
                                 collapsed = collapsed,
@@ -326,8 +308,7 @@ fun ModeDemo(
                     if (!showPeekBubble && mode != AppMode.DIRECT && !shareCase && collapsed) {
                         // The setting is off: the button is shown faded where it would sit, with the
                         // way to turn it on — seeing it is what tells the user the option exists.
-                        DemoOffHint(
-                            text = stringResource(R.string.mode_demo_short_float),
+                        DemoGhostBubble(
                             onClick = { onOpenSetting(SettingsSpot.FLOATING_BUTTON) },
                             modifier = Modifier.align(Alignment.BottomEnd).padding(PEEK_MARGIN)
                         )
@@ -350,6 +331,95 @@ fun ModeDemo(
                     }
                 }
             }
+        }
+    }
+}
+
+/** One line of the demo's hint block: informational, or a way into the setting behind it. */
+private data class DemoHintLine(val text: String, val spot: SettingsSpot? = null)
+
+/**
+ * All of the demo's hints, in one block under the controls. They used to float next to whatever they
+ * were about — over the icon, under the button, beside the list — which meant a different mess on
+ * every screen size, and on a short panel the last one fell off the bottom edge.
+ */
+@Composable
+private fun BoxScope.DemoHints(
+    mode: AppMode,
+    shareCase: Boolean,
+    recentsOff: Boolean,
+    floatingOff: Boolean,
+    allSlotsOff: Boolean,
+    needsOverlay: Boolean,
+    onOpenSetting: (SettingsSpot?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val lines = buildList {
+        if (shareCase) {
+            add(DemoHintLine(stringResource(R.string.mode_demo_share_hint)))
+        } else {
+            add(DemoHintLine(stringResource(R.string.mode_demo_long_press)))
+        }
+        if (recentsOff) {
+            add(
+                DemoHintLine(
+                    stringResource(R.string.mode_demo_enable_in_settings) + ": " +
+                        stringResource(R.string.mode_demo_short_recents),
+                    SettingsSpot.RECENT_APPS
+                )
+            )
+        }
+        if (floatingOff && mode != AppMode.DIRECT) {
+            add(
+                DemoHintLine(
+                    stringResource(R.string.mode_demo_enable_in_settings) + ": " +
+                        stringResource(R.string.mode_demo_short_float),
+                    SettingsSpot.FLOATING_BUTTON
+                )
+            )
+        }
+        if (allSlotsOff && mode == AppMode.DIRECT) {
+            add(
+                DemoHintLine(
+                    stringResource(R.string.mode_demo_enable_in_settings) + ": " +
+                        stringResource(R.string.mode_demo_short_all_slots),
+                    SettingsSpot.USE_ALL_SLOTS
+                )
+            )
+        }
+        if (needsOverlay) {
+            add(DemoHintLine(stringResource(R.string.mode_demo_pill_hint), SettingsSpot.FLOATING_BUTTON))
+        }
+    }
+    Column(
+        modifier
+            .padding(start = 12.dp, top = 46.dp, end = 12.dp)
+            .widthIn(max = 320.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        lines.forEach { line ->
+            Text(
+                line.text,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (line.spot != null) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    Color.White
+                },
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        if (line.spot != null) {
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                        } else {
+                            Color.Black.copy(alpha = 0.45f)
+                        }
+                    )
+                    .then(
+                        if (line.spot != null) Modifier.clickable { onOpenSetting(line.spot) } else Modifier
+                    )
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
+            )
         }
     }
 }
@@ -397,35 +467,25 @@ private fun DemoCaseChip(label: String, selected: Boolean, onClick: () -> Unit) 
     )
 }
 
-/** A feature that exists but is switched off: named, faded, and one tap from its own setting. */
+/**
+ * Where a switched-off floating button would sit, faded. Its name and its way into Settings live in
+ * the hint block at the top of the panel: under the button there was no room for them, and on a short
+ * panel they fell off the bottom edge.
+ */
 @Composable
-private fun DemoOffHint(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Column(modifier, horizontalAlignment = Alignment.End) {
-        Box(
-            Modifier
-                .size(PEEK_BUBBLE)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Default.Menu,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-            )
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            stringResource(R.string.mode_demo_enable_in_settings) + ": " + text,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .widthIn(max = 200.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
-                .clickable { onClick() }
-                .padding(horizontal = 10.dp, vertical = 5.dp)
+private fun DemoGhostBubble(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(PEEK_BUBBLE)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            Icons.Default.Menu,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         )
     }
 }
@@ -441,17 +501,6 @@ private fun BoxScope.DemoPeekPill(onOpen: () -> Unit) {
         Modifier.align(Alignment.BottomEnd).padding(PEEK_MARGIN),
         horizontalAlignment = Alignment.End
     ) {
-        Text(
-            stringResource(R.string.mode_demo_pill_hint),
-            style = MaterialTheme.typography.labelSmall,
-            color = Color.White,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .widthIn(max = 200.dp)
-                .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
-                .padding(horizontal = 10.dp, vertical = 5.dp)
-        )
-        Spacer(Modifier.height(8.dp))
         Box(
             Modifier
                 .size(PEEK_BUBBLE)
@@ -502,7 +551,6 @@ private fun DemoSheet(
     startNumber: Int,
     recentApps: List<RecentApp>,
     recentsOff: Boolean,
-    onEnableRecents: () -> Unit,
     onOpenSettings: () -> Unit,
     sharedText: String?,
     collapsed: Boolean,
@@ -518,13 +566,16 @@ private fun DemoSheet(
     var handleStripPx by remember { mutableIntStateOf(0) }
     var dragPx by remember { mutableFloatStateOf(0f) }
     var dragging by remember { mutableStateOf(false) }
+    // Set while the drag's own animation runs, so the effect below does not start a second one on the
+    // same offset — two springs on one value is what made Mix's sheet judder.
+    var settlingFromDrag by remember { mutableStateOf(false) }
     val hiddenPx = (sheetHeightPx - handleStripPx).toFloat().coerceAtLeast(0f)
     // Same shape as the real sheet's offset: an Animatable the drag offsets live, so the release can
     // hand its velocity to the settling animation.
     val offsetY = remember { Animatable(0f) }
-    LaunchedEffect(collapsed, hiddenPx) {
+    LaunchedEffect(collapsed) {
         // The floating button opens the list, and that has to move the sheet too.
-        if (!dragging) {
+        if (!dragging && !settlingFromDrag) {
             offsetY.animateTo(if (collapsed) hiddenPx else 0f, SHEET_SPRING)
         }
     }
@@ -556,8 +607,14 @@ private fun DemoSheet(
                     }
                     scope.launch {
                         offsetY.snapTo(base)
+                        settlingFromDrag = true
                         onCollapsedChange(shouldCollapse)
-                        offsetY.animateTo(if (shouldCollapse) hiddenPx else 0f, SHEET_SPRING, initialVelocity = velocity)
+                        offsetY.animateTo(
+                            if (shouldCollapse) hiddenPx else 0f,
+                            SHEET_SPRING,
+                            initialVelocity = velocity
+                        )
+                        settlingFromDrag = false
                     }
                 }
             ),
@@ -611,17 +668,7 @@ private fun DemoSheet(
                                     )
                             )
                         }
-                        Spacer(Modifier.width(10.dp))
-                        Text(
-                            stringResource(R.string.mode_demo_enable_in_settings) + ": " +
-                                stringResource(R.string.mode_demo_short_recents),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50))
-                                .clickable { onEnableRecents() }
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
+                        Spacer(Modifier.weight(1f))
                     }
                 } else {
                     Spacer(Modifier.weight(1f))
@@ -954,9 +1001,12 @@ private fun HeroIcon(
     val opened = burst.value < 1f
 
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(HERO_ICON * 2.8f), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(HERO_ICON), contentAlignment = Alignment.Center) {
             if (burst.value < 1f) {
-                Canvas(Modifier.matchParentSize()) { firework(burst.value) }
+                // requiredSize, not matchParentSize: a 2.8x canvas in the layout flow made the icon
+                // block taller than the room Mix leaves it, and the caption under the icon was the
+                // part that got squeezed out.
+                Canvas(Modifier.requiredSize(HERO_ICON * 2.8f)) { firework(burst.value) }
             }
             Box(
                 Modifier
@@ -1076,20 +1126,6 @@ private fun LauncherIcon(size: Dp) {
     if (bitmap != null) {
         Image(bitmap = bitmap, contentDescription = null, modifier = Modifier.size(size))
     }
-}
-
-/** Light on the brand backdrop, on a chip: the plain label was unreadable over it. */
-@Composable
-private fun DemoHint(modifier: Modifier = Modifier) {
-    Text(
-        stringResource(R.string.mode_demo_long_press),
-        style = MaterialTheme.typography.labelMedium,
-        color = Color.White,
-        textAlign = TextAlign.Center,
-        modifier = modifier
-            .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(50))
-            .padding(horizontal = 10.dp, vertical = 4.dp)
-    )
 }
 
 /**
