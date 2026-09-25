@@ -96,6 +96,7 @@
     <string name="mode_demo_short_recents">Recent apps</string>
     <string name="mode_demo_short_float">Floating button</string>
     <string name="mode_demo_short_all_slots">All slots</string>
+    <string name="mode_demo_list_opens">Opens the list</string>
     <string name="mode_demo_label">Demo — try me</string>
     <string name="mode_demo_share_hint">In any app: select text → Share → Not App</string>
     <string name="mode_demo_enable_in_settings">Turn on</string>

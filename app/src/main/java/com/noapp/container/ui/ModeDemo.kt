@@ -196,6 +196,7 @@ fun ModeDemo(
                 allSlotsOff = !useAllSlotsInDirectMode,
                 needsOverlay = showPeekBubble && !canOverlay,
                 onOpenSetting = onOpenSetting,
+                maxWidth = panelWidth * 0.56f,
                 modifier = Modifier.align(Alignment.TopStart)
             )
             // Keyed on the mode: switching modes must show the new example expanded, not the state
@@ -213,6 +214,18 @@ fun ModeDemo(
                 var bubbleRemoved by remember { mutableStateOf(false) }
                 val bubbleGone = bubbleRemoved || (!peekBubbleReturns && bubbleGoneForSession)
                 Box(Modifier.fillMaxSize()) {
+                    // The icon that sits on the home screen, in all three modes, at the size it is
+                    // there. Compact and out of the way in the corner: at hero size it collided with
+                    // whatever the panel had to say.
+                    DemoIconBlock(
+                        mode = mode,
+                        target = items[0],
+                        onShowShortcuts = onShowShortcuts,
+                        onTap = { if (mode == AppMode.LIST) collapsed = false },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = 46.dp, end = 12.dp)
+                    )
                     when (mode) {
                         AppMode.LIST -> DemoSheet(
                             items = items,
@@ -240,13 +253,6 @@ fun ModeDemo(
                                 }
                             }
                             Box(Modifier.fillMaxSize()) {
-                                Column(
-                                    Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center
-                                ) {
-                                    HeroIcon(items[0], onShowShortcuts, onOpen = { gearVisible = true })
-                                }
                                 if (gearVisible) {
                                     DemoGearChip(
                                         onClick = { onOpenSetting(null) },
@@ -266,17 +272,8 @@ fun ModeDemo(
                             }
                         }
 
-                        // The icon the mode would launch first, then the list of the rest under it.
-                        // The list is drawn after the icon — the other way round the icon covered the
-                        // rows, and that reads backwards: an app on top of the list is a screen with
-                        // no list on it.
-                        AppMode.MIX -> Column(
-                            Modifier.fillMaxSize(),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                                HeroIcon(items[0], onShowShortcuts)
-                            }
+                        // Mix: the same list, of everything after the item a tap launches.
+                        AppMode.MIX -> Box(Modifier.fillMaxSize()) {
                             DemoSheet(
                                 items = items.drop(1),
                                 startNumber = 2,
@@ -352,6 +349,7 @@ private fun BoxScope.DemoHints(
     allSlotsOff: Boolean,
     needsOverlay: Boolean,
     onOpenSetting: (SettingsSpot?) -> Unit,
+    maxWidth: Dp,
     modifier: Modifier = Modifier
 ) {
     val lines = buildList {
@@ -394,7 +392,9 @@ private fun BoxScope.DemoHints(
     Column(
         modifier
             .padding(start = 12.dp, top = 46.dp, end = 12.dp)
-            .widthIn(max = 320.dp),
+            // The icon block sits in the other corner of this same band, so the block never takes more
+            // than a little over half the width.
+            .widthIn(max = maxWidth),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         lines.forEach { line ->
@@ -978,35 +978,32 @@ fun ShortcutMenuOverlay(
 }
 
 /**
- * The launcher icon the user actually has — whichever variant is enabled in Settings, not a stand-in —
- * because that is the icon on their home screen and the one the long-press menu belongs to. Holding it
- * opens that menu; tapping it shows what pressing it does instead, as a burst of light from the icon
- * (nothing is launched, and nothing pops up to say which item it was — the line underneath already
- * names it). The item's own icon is there too, so "which app" is answered by the app itself.
+ * The icon as it is on the home screen — the user's own, in the variant Settings has enabled — at the
+ * size it is there, parked in the panel's corner. It behaves the way that icon does: a tap does what
+ * the mode does with it (show the list in List, open the first item in Direct and Mix), and holding it
+ * opens the shortcut menu the launcher would show.
+ *
+ * The line under it names what a tap gives you before you tap, and says it back once you have.
  */
 @Composable
-private fun HeroIcon(
+private fun DemoIconBlock(
+    mode: AppMode,
     target: ShortcutSlot,
     onShowShortcuts: () -> Unit,
-    modifier: Modifier = Modifier,
-    onOpen: () -> Unit = {}
+    onTap: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
     val burst = remember { Animatable(1f) }
-    // The kick at the start of the burst, so the icon itself reacts to the tap.
     val pop = 1f + 0.12f * (1f - burst.value).coerceIn(0f, 1f)
-    // While it plays, the line under the icon says what the tap did: a firework on its own left it
-    // open to question what had just opened. The animation is finite, so this always resets itself —
-    // and the whole thing is keyed by mode, so switching modes starts clean.
     val opened = burst.value < 1f
 
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(HERO_ICON), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(HOME_ICON), contentAlignment = Alignment.Center) {
             if (burst.value < 1f) {
-                // requiredSize, not matchParentSize: a 2.8x canvas in the layout flow made the icon
-                // block taller than the room Mix leaves it, and the caption under the icon was the
-                // part that got squeezed out.
-                Canvas(Modifier.requiredSize(HERO_ICON * 2.8f)) { firework(burst.value) }
+                // requiredSize, not matchParentSize: a canvas in the layout flow used to make this
+                // block taller than the room it has, and the caption was what got squeezed out.
+                Canvas(Modifier.requiredSize(HOME_ICON * 2.4f)) { firework(burst.value) }
             }
             Box(
                 Modifier
@@ -1017,7 +1014,7 @@ private fun HeroIcon(
                     .pointerInput(target) {
                         detectTapGestures(
                             onTap = {
-                                onOpen()
+                                onTap()
                                 scope.launch {
                                     burst.snapTo(0f)
                                     burst.animateTo(1f, tween(FIREWORK_MS, easing = LinearEasing))
@@ -1027,31 +1024,36 @@ private fun HeroIcon(
                         )
                     }
             ) {
-                LauncherIcon(HERO_ICON)
+                LauncherIcon(HOME_ICON)
             }
         }
         Row(
-            Modifier.padding(top = 10.dp),
+            Modifier
+                .padding(top = 8.dp)
+                .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
+                .padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (opened) {
+            if (mode == AppMode.LIST) {
                 Text(
-                    "\u2713",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = OPENED_CHECK
+                    stringResource(R.string.mode_demo_list_opens),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White.copy(alpha = 0.92f)
                 )
+            } else if (opened) {
+                Text("\u2713", style = MaterialTheme.typography.titleSmall, color = OPENED_CHECK)
                 Spacer(Modifier.width(6.dp))
                 Text(
                     stringResource(R.string.mode_demo_opened, labelOf(target, target.id + 1)),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.labelMedium,
                     color = Color.White
                 )
             } else {
-                DemoIcon(target, target.id + 1, 24.dp)
-                Spacer(Modifier.width(8.dp))
+                DemoIcon(target, target.id + 1, 20.dp)
+                Spacer(Modifier.width(6.dp))
                 Text(
                     stringResource(R.string.mode_demo_direct_opens, labelOf(target, target.id + 1)),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.labelMedium,
                     color = Color.White.copy(alpha = 0.92f)
                 )
             }
@@ -1061,8 +1063,8 @@ private fun HeroIcon(
 
 /**
  * The Configure gear Direct flashes over the app it just launched: a 32dp dark scrim with the same
- * 24dp glyph, 12dp in from the top end, gone again after the same 2.5s. Drawn, not tappable — in the
- * demo there is nothing underneath it to come back from.
+ * 24dp glyph, 12dp in from the top end, gone again after the same 2.5s. Tapping it goes to Settings,
+ * as the real one does.
  */
 @Composable
 private fun DemoGearChip(onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -1103,7 +1105,6 @@ private fun DrawScope.firework(progress: Float) {
             alpha = alpha
         )
     }
-    // The thin ring left behind by the outer shell.
     drawCircle(
         color = FIREWORK_COLORS.first(),
         radius = reach * (0.3f + 0.7f * progress),
@@ -1194,7 +1195,8 @@ private fun DrawScope.brandWallpaper(mark: Painter) {
 }
 
 private val DEMO_PADDING = 8.dp
-private val HERO_ICON = 104.dp
+/** The size a home-screen icon actually is. */
+private val HOME_ICON = 56.dp
 /** The sheet's own dismissal numbers (QuickPickSheet): same threshold, same fling speed. */
 private val SHEET_DISMISS_THRESHOLD = 100.dp
 private val SHEET_DISMISS_VELOCITY = 1000.dp
