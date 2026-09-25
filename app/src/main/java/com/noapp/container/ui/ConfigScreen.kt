@@ -48,6 +48,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -82,6 +83,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -709,14 +711,25 @@ fun ConfigScreen(
             // The list ends a long way above the bottom of the screen, and this is the one thing worth
             // putting there: a way to see what the mode you are on actually does, without changing it.
             item(key = "demo") {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.config_demo_entry)) },
-                    supportingContent = { Text(stringResource(R.string.config_demo_hint)) },
-                    leadingContent = { LauncherIconSmall() },
-                    modifier = Modifier
-                        .padding(top = 8.dp)
-                        .clickable { modeDialogVisible = true }
-                )
+                // A button, not another row: rows above it are items to edit, and this one is not an
+                // item. The empty half of the screen is where it belongs.
+                Column(
+                    Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    FilledTonalButton(onClick = { modeDialogVisible = true }) {
+                        LauncherIconSmall()
+                        Spacer(Modifier.width(10.dp))
+                        Text(stringResource(R.string.mode_demo_label))
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        stringResource(R.string.config_demo_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
     }

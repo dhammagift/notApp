@@ -180,11 +180,25 @@ fun ModeDemo(
             val panelWidth = maxWidth
             val panelHeight = maxHeight
             DemoLabel()
-            if (mode != AppMode.DIRECT) {
-                DemoCaseSwitch(
+            DemoCaseSwitch(
                     shareCase = shareCase,
                     onChange = { shareCase = it },
                     modifier = Modifier.align(Alignment.TopEnd)
+                )
+            }
+            if (shareCase) {
+                // Without this the share variant is just an oddly-annotated list; with it, it says
+                // where the screen comes from, which is the thing a user has never seen.
+                Text(
+                    stringResource(R.string.mode_demo_share_hint),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 46.dp, start = 24.dp, end = 24.dp)
+                        .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(50))
+                        .padding(horizontal = 12.dp, vertical = 5.dp)
                 )
             }
             // Keyed on the mode: switching modes must show the new example expanded, not the state
@@ -583,7 +597,8 @@ private fun DemoSheet(
                         }
                         Spacer(Modifier.width(10.dp))
                         Text(
-                            stringResource(R.string.mode_demo_enable_in_settings),
+                            stringResource(R.string.mode_demo_enable_in_settings) + ": " +
+                                stringResource(R.string.settings_show_recent_apps),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier

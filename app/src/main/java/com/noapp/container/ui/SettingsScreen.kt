@@ -39,6 +39,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -111,14 +112,18 @@ private fun IconVariant.displayName(): String = when (id) {
     else -> id
 }
 
-/** The wash a spotlighted row wears while it is being pointed at, then fades out. */
+/**
+ * The wash a spotlighted row wears while it is being pointed at, then fades out. It has to come from
+ * the row's own container colour: a background applied underneath a ListItem is painted over by the
+ * item, which is why the first version of this highlighted nothing at all.
+ */
 @Composable
 private fun spotlightFlash(on: Boolean): Color {
     val alpha by animateFloatAsState(if (on) 1f else 0f, tween(SPOTLIGHT_FADE_MS), label = "spotlight")
-    return MaterialTheme.colorScheme.secondaryContainer.copy(alpha = alpha * 0.7f)
+    return MaterialTheme.colorScheme.primaryContainer.copy(alpha = alpha)
 }
 
-private const val SPOTLIGHT_MS = 1600L
+private const val SPOTLIGHT_MS = 2600L
 private const val SPOTLIGHT_FADE_MS = 350
 private const val SPOTLIGHT_TOP_MARGIN_PX = 220
 
@@ -373,8 +378,10 @@ fun SettingsScreen(
             // mode(s) it works in instead.
             ListItem(
                 modifier = Modifier
-                    .onGloballyPositioned { useAllSlotsY = it.positionInParent().y.toInt() }
-                    .background(spotlightFlash(spotlight == SettingsSpot.USE_ALL_SLOTS && flashing)),
+                    .onGloballyPositioned { useAllSlotsY = it.positionInParent().y.toInt() },
+                colors = ListItemDefaults.colors(
+                    containerColor = spotlightFlash(spotlight == SettingsSpot.USE_ALL_SLOTS && flashing)
+                ),
                 headlineContent = { Text(stringResource(R.string.settings_use_all_slots)) },
                 supportingContent = {
                     Text(
@@ -400,8 +407,10 @@ fun SettingsScreen(
             HorizontalDivider()
             ListItem(
                 modifier = Modifier
-                    .onGloballyPositioned { recentAppsY = it.positionInParent().y.toInt() }
-                    .background(spotlightFlash(spotlight == SettingsSpot.RECENT_APPS && flashing)),
+                    .onGloballyPositioned { recentAppsY = it.positionInParent().y.toInt() },
+                colors = ListItemDefaults.colors(
+                    containerColor = spotlightFlash(spotlight == SettingsSpot.RECENT_APPS && flashing)
+                ),
                 headlineContent = { Text(stringResource(R.string.settings_show_recent_apps)) },
                 supportingContent = { Text(stringResource(R.string.settings_show_recent_apps_hint)) },
                 trailingContent = {
@@ -420,8 +429,10 @@ fun SettingsScreen(
             HorizontalDivider()
             ListItem(
                 modifier = Modifier
-                    .onGloballyPositioned { floatingButtonY = it.positionInParent().y.toInt() }
-                    .background(spotlightFlash(spotlight == SettingsSpot.FLOATING_BUTTON && flashing)),
+                    .onGloballyPositioned { floatingButtonY = it.positionInParent().y.toInt() },
+                colors = ListItemDefaults.colors(
+                    containerColor = spotlightFlash(spotlight == SettingsSpot.FLOATING_BUTTON && flashing)
+                ),
                 headlineContent = { Text(stringResource(R.string.settings_show_peek_bubble)) },
                 supportingContent = { Text(stringResource(R.string.settings_show_peek_bubble_hint)) },
                 trailingContent = {
