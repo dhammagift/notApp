@@ -105,6 +105,7 @@ import com.noapp.container.icon.BoltIcon
 import com.noapp.container.icon.LinkIcon
 import com.noapp.container.icon.SlotIcon
 import com.noapp.container.icon.displayName
+import com.noapp.container.icon.enabledLauncherComponent
 import com.noapp.container.model.AppConfig
 import com.noapp.container.model.AppMode
 import com.noapp.container.model.ShortcutSlot
