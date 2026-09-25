@@ -473,7 +473,7 @@ fun ConfigScreen(
                                 // Close the picker first: the user is going somewhere else, and the
                                 // dialog would otherwise sit on top of the screen they asked for.
                                 modeDialogVisible = false
-                                onOpenSettings(spot)
+                                onOpenSettingsFromDemo(spot)
                             },
                             slots = slots,
                             // The dialog deliberately stays open on a choice: the example at the

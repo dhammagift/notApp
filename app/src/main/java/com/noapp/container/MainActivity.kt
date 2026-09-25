@@ -503,7 +503,14 @@ private fun NoAppRoot(
             onAddSlot = { type -> onScreenChange(Screen.NewSlot(type)) },
             onOpenSettings = { spot ->
                 settingsSpotlight = spot
-                pickerAfterSettings = spot != null
+                pickerAfterSettings = false
+                onScreenChange(Screen.Settings)
+            },
+            // Anything the picker's demo leads to comes back to the picker, whatever the way in was:
+            // a greyed-out hint, a gear, or the Configure entry in the long-press menu.
+            onOpenSettingsFromDemo = { spot ->
+                settingsSpotlight = spot
+                pickerAfterSettings = true
                 onScreenChange(Screen.Settings)
             },
             onModeChanged = onModeChanged,
