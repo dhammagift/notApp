@@ -38,16 +38,23 @@ object ReviewStore {
         }.getOrDefault(0L)
     }
 
+    /**
+     * The one build-time switch, behind a var for the same reason as the clock above: the policy
+     * tests ask about the policy, and a test build — which asks on the very next launch so the card
+     * can be looked at — carries `ALWAYS_ASK_FOR_REVIEW = true` and would fail them all otherwise.
+     */
+    internal var alwaysAsk: Boolean = BuildConfig.ALWAYS_ASK_FOR_REVIEW
+
     private fun daysSinceInstall(context: Context): Long =
         ((clock() - installedAt(context)) / MS_PER_DAY).coerceAtLeast(0L)
 
     /** Whether the card may be shown right now; the caller decides where it lands. */
     fun cardDue(context: Context): Boolean = !answered(context) &&
-        (BuildConfig.ALWAYS_ASK_FOR_REVIEW || daysSinceInstall(context) >= ASK_FROM_DAYS)
+        (alwaysAsk || daysSinceInstall(context) >= ASK_FROM_DAYS)
 
     /** "Never ask", or a tap on "rate" — either way the card is answered and never returns. */
     fun stopAsking(context: Context) {
-        if (BuildConfig.ALWAYS_ASK_FOR_REVIEW) return
+        if (alwaysAsk) return
         prefs(context).edit().putBoolean(KEY_DONE, true).apply()
     }
 }

@@ -3,6 +3,7 @@ package com.noapp.container.data
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.noapp.container.BuildConfig
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -31,6 +32,9 @@ class ReviewStoreTest {
         install = DAY_ZERO
         ReviewStore.installedAt = { install }
         ReviewStore.clock = { install + days * DAY_MS }
+        // The policy, not the build switch: a test build that always asks would otherwise turn every
+        // "silent" case below into a failure. The switch has its own test.
+        ReviewStore.alwaysAsk = false
     }
 
     @After
@@ -39,6 +43,7 @@ class ReviewStoreTest {
             ctx.packageManager.getPackageInfo(ctx.packageName, 0).firstInstallTime
         }
         ReviewStore.clock = { System.currentTimeMillis() }
+        ReviewStore.alwaysAsk = BuildConfig.ALWAYS_ASK_FOR_REVIEW
     }
 
     private var days = 0L
@@ -98,6 +103,19 @@ class ReviewStoreTest {
         install = DAY_ZERO + 10 * DAY_MS
         days = 0
         assertFalse(ReviewStore.cardDue(context))
+    }
+
+    /**
+     * The switch a `-PalwaysAskForReview=true` build sets, so the card can be looked at on a device
+     * without waiting two months: it asks from the first launch and no answer silences it.
+     */
+    @Test
+    fun `a test build asks from the first launch and no answer stops it`() {
+        ReviewStore.alwaysAsk = true
+        days = 0
+        assertTrue(ReviewStore.cardDue(context))
+        ReviewStore.stopAsking(context)
+        assertTrue(ReviewStore.cardDue(context))
     }
 
     private companion object {
