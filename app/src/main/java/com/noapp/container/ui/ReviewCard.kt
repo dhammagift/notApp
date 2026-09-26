@@ -130,11 +130,13 @@ fun ReviewCard(onDismissed: () -> Unit, modifier: Modifier = Modifier) {
  * instead of waiting for the next screen to be built.
  */
 @Composable
-fun ReviewCardIfDue(modifier: Modifier = Modifier) {
+fun ReviewCardIfDue(modifier: Modifier = Modifier, containerModifier: Modifier = Modifier) {
     val context = LocalContext.current
     var due by remember { mutableStateOf(ReviewStore.cardDue(context)) }
     // Answering folds the card away rather than dropping it, so what's below slides up instead of jumping.
-    AnimatedVisibility(due, exit = fadeOut(tween(180)) + shrinkVertically(tween(260))) {
+    // [containerModifier] is for what has to sit on the container itself (a Box's align); [modifier]
+    // stays inside, so its padding folds away with the card.
+    AnimatedVisibility(due, modifier = containerModifier, exit = fadeOut(tween(180)) + shrinkVertically(tween(260))) {
         ReviewCard(onDismissed = { due = false }, modifier = modifier)
     }
 }

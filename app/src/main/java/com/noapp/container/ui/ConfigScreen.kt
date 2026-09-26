@@ -816,6 +816,13 @@ fun ConfigScreen(
                 HorizontalDivider()
             }
             }
+            // The rating ask lives on this screen, not in Settings: a Direct-mode user may never open
+            // Settings, but this is the app's own window. Pinned above the two round buttons so it
+            // never moves with the list.
+            ReviewCardIfDue(
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 88.dp),
+                containerModifier = Modifier.align(Alignment.BottomCenter)
+            )
             // Pinned to the bottom-left rather than trailing the items: as a list row it moved every
             // time an item was added or removed, and it is not an item.
             FilledTonalButton(
