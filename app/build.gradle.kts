@@ -21,6 +21,13 @@ val testBuildTag = providers.gradleProperty("testBuildTag").orNull?.take(7)?.tak
 // Releases keep the plain code derived from the version name.
 val buildNumber = providers.gradleProperty("buildNumber").orNull?.toIntOrNull()
 
+// The switch may only ever ride on a build that is not a release: a release has no testBuildTag (see
+// above), so asking for both fails the build itself, whatever the workflow or a hand-typed command
+// line says. This is the guarantee; the workflow's own refusal is a second fence in front of it.
+require(!(alwaysAskForReview && testBuildTag == null)) {
+    "alwaysAskForReview is a test-only switch and cannot be set on a release build"
+}
+
 android {
     namespace = "com.noapp.container"
     compileSdk = 36
@@ -34,7 +41,9 @@ android {
         // can't be forgotten or collide: major*10000 + minor*100 + patch (0.5.1 -> 501).
         val appVersion = "0.6.2"
         versionName = appVersion
-        if (testBuildTag != null) versionNameSuffix = "-$testBuildTag"
+        // A build carrying the switch says so in its version name (Settings shows it), so it can never
+        // be mistaken for a normal one.
+        if (testBuildTag != null) versionNameSuffix = "-$testBuildTag" + if (alwaysAskForReview) "-review-test" else ""
         val baseVersionCode = appVersion.split(".").map { it.toInt() }.let { (major, minor, patch) -> major * 10000 + minor * 100 + patch }
         versionCode = if (testBuildTag != null) baseVersionCode * 1000 + (buildNumber ?: 0) else baseVersionCode
         buildConfigField("boolean", "ALWAYS_ASK_FOR_REVIEW", alwaysAskForReview.toString())
