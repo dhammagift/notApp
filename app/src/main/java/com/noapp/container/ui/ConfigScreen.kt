@@ -197,7 +197,6 @@ private fun ModePickerDialog(
     val context = LocalContext.current
     var pendingMode by remember { mutableStateOf<AppMode?>(null) }
     var showGearExplainer by remember { mutableStateOf(false) }
-    var shortcutsShown by remember { mutableStateOf(false) }
     val configuration = LocalConfiguration.current
     val wideLandscape = configuration.screenWidthDp > configuration.screenHeightDp
     val cardsMaxHeight = (configuration.screenHeightDp * CARDS_TALL_FRACTION).dp
@@ -324,7 +323,6 @@ private fun ModePickerDialog(
                                 onOpenSetting(spot)
                             },
                             narrowSheet = wideLandscape,
-                            onShowShortcuts = { shortcutsShown = true },
                             modifier = demoModifier.riseInOnAppear(3, baseDelayMillis = 120)
                         )
                     }
@@ -371,19 +369,6 @@ private fun ModePickerDialog(
                                 .padding(horizontal = 16.dp, vertical = 12.dp)
                         )
                     }
-                }
-                if (shortcutsShown) {
-                    ShortcutMenuOverlay(
-                        appName = stringResource(R.string.app_name),
-                        mode = currentMode,
-                        slots = slots,
-                        useAllSlotsInDirectMode = useAllSlotsInDirectMode,
-                        onOpenSettings = {
-                            shortcutsShown = false
-                            onOpenSetting(null)
-                        },
-                        onDismiss = { shortcutsShown = false }
-                    )
                 }
             }
         }
