@@ -216,7 +216,7 @@ fun ModeDemo(
                 // button looked like the thing controlling how the next mode opened.
                 var collapsed by remember { mutableStateOf(false) }
                 var bubbleRemoved by remember { mutableStateOf(false) }
-                // Bumped by a tap on the icon in List: the sheet dips and springs back, so the tap
+                // Bumped by a tap on the icon in List and Mix: the sheet dips and springs back, so the tap
                 // reads as "that is what opens the list" instead of doing nothing visible.
                 var listPulse by remember { mutableIntStateOf(0) }
                 val bubbleGone = bubbleRemoved || (!peekBubbleReturns && bubbleGoneForSession)
@@ -229,7 +229,9 @@ fun ModeDemo(
                         target = items[0],
                         onShowShortcuts = onShowShortcuts,
                         onTap = {
-                            if (mode == AppMode.LIST) {
+                            // List and Mix both open the list on a tap: Mix launches the first item AND
+                            // shows the list over it (a collapsed list comes back, an open one dips).
+                            if (mode == AppMode.LIST || mode == AppMode.MIX) {
                                 collapsed = false
                                 listPulse++
                             }
@@ -311,6 +313,7 @@ fun ModeDemo(
                                 sharedText = if (shareCase) stringResource(R.string.mode_demo_share_text) else null,
                                 collapsed = collapsed,
                                 onCollapsedChange = { collapsed = it },
+                                pulse = listPulse,
                                 heightCap = minOf(
                                     panelHeight * SHEET_PANEL_FRACTION,
                                     (panelHeight - MIX_ICON_SPACE).coerceAtLeast(MIX_SHEET_MIN_HEIGHT)
