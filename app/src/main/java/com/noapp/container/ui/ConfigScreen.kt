@@ -866,17 +866,24 @@ private fun ModeCards(currentMode: AppMode, onSelect: (AppMode) -> Unit, modifie
                         }
                         Text(description, style = MaterialTheme.typography.bodyMedium)
                     }
-                    AnimatedVisibility(
-                        visible = selected,
-                        enter = fadeIn(tween(180)) + scaleIn(spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium), initialScale = 0.3f),
-                        exit = fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.3f)
-                    ) {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = null,
-                            modifier = Modifier.padding(start = 8.dp)
-                        )
-                    }
+                    // The check's room is always there, so choosing a mode never reflows the text
+                    // (and never changes the card's height); only the check itself appears.
+                    val check by animateFloatAsState(
+                        if (selected) 1f else 0f,
+                        spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium),
+                        label = "modeCheck"
+                    )
+                    Icon(
+                        Icons.Default.Check,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .graphicsLayer {
+                                alpha = check.coerceIn(0f, 1f)
+                                scaleX = 0.3f + 0.7f * check
+                                scaleY = 0.3f + 0.7f * check
+                            }
+                    )
                 }
             }
         }

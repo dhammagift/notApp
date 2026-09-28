@@ -306,7 +306,6 @@ fun ModeDemo(
                                     .align(Alignment.BottomCenter)
                                     .widthIn(max = if (narrowSheet) SHEET_MAX_WIDTH else Dp.Unspecified)
                                     .fillMaxWidth()
-                                    .padding(horizontal = MIX_SHEET_INSET)
                             )
                         }
                     }
@@ -1249,7 +1248,6 @@ private val ICON_BLOCK_WIDTH = 150.dp
 private val SHEET_DISMISS_THRESHOLD = 100.dp
 private val SHEET_DISMISS_VELOCITY = 1000.dp
 private val SHEET_CORNER = 22.dp
-private val MIX_SHEET_INSET = 24.dp
 
 /** Room Mix keeps for the icon block above its list, so the list can still run to the bottom. */
 private val MIX_ICON_SPACE = 190.dp
