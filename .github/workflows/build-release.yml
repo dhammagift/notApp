@@ -5,6 +5,8 @@ name: Build and Release
 #                                      artifact (run's Summary page). No tag, no Release.
 #   - push a vX.Y.Z tag, or
 #     "Run workflow" with a version -> the real thing: a GitHub Release with the files attached.
+#                                      A tag also goes to Play closed testing (alpha); a manual
+#                                      version run does when "play" is ticked.
 on:
   # A tag builds. Run workflow builds. A push does not.
   #
@@ -22,7 +24,7 @@ on:
         required: false
         type: string
       play:
-        description: 'Also upload to the Play internal track (gift.dhamma.noapp) — testers only, production still needs a promote. Bump the version first: versionCode is derived from it, and Play refuses a code it has already seen.'
+        description: 'Also upload to Play closed testing (alpha, gift.dhamma.noapp). Needs a version too (a tag always uploads). Bump appVersion in app/build.gradle.kts first: versionCode is derived from it, and Play refuses a code it has already seen.'
         required: false
         type: boolean
         default: false
@@ -60,6 +62,14 @@ jobs:
         if: inputs.alwaysAskForReview && (inputs.version != '' || inputs.play)
         run: |
           echo "alwaysAskForReview=true is a test-only switch; it cannot go with a version or a Play upload." >&2
+          exit 1
+
+      # A build without a version carries a test versionCode (base*1000 + run number), far above any
+      # release's. Once Play has seen one, every later release is refused as a downgrade.
+      - name: Refuse a Play upload of a test build
+        if: inputs.play && inputs.version == ''
+        run: |
+          echo "play=true needs a version: a test build's versionCode would block every later release on Play." >&2
           exit 1
 
       - name: Checkout code
@@ -163,7 +173,7 @@ jobs:
       # dg-app-full/docs/ANDROID_RELEASE.md.
       - name: Is the Play service account there?
         id: play
-        if: github.event_name == 'workflow_dispatch' && inputs.play
+        if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.play)
         env:
           PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
         run: |
@@ -181,9 +191,9 @@ jobs:
           fi
 
       # The signed bundle from this same run, not a rebuild: what reaches Play is what the release
-      # assets above carry. Deliberately not on a tag — a `v*` tag here has always meant "cut a
-      # GitHub release", and giving an existing tag a second, store-facing meaning quietly is how
-      # someone ships something they did not mean to. Tick the box.
+      # assets above carry. A tag uploads too (owner, 2026-09-28: builds go straight to the test
+      # track), to closed testing (alpha) like dg-apps' uposatha and dictionary apps; production
+      # still needs a promote in the Play Console.
       - name: Upload to Google Play
         if: steps.play.outputs.have == 'yes'
         uses: r0adkll/upload-google-play@v1
@@ -191,7 +201,7 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: gift.dhamma.noapp
           releaseFiles: NotApp.aab
-          track: internal
+          track: alpha
           status: completed
 
       - name: Say what went to Play
@@ -200,5 +210,5 @@ jobs:
           {
             echo "### Uploaded to Play"
             echo ""
-            echo "\`gift.dhamma.noapp\` is on the **internal** track. Production needs a promote in the Play Console."
+            echo "\`gift.dhamma.noapp\` is on **closed testing (alpha)**. Production needs a promote in the Play Console."
           } >> "$GITHUB_STEP_SUMMARY"

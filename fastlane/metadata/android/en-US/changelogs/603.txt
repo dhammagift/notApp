@@ -1,0 +1,8 @@
+* Smoother everywhere: screens slide and fade instead of cutting, the list opens as a quick cascade,
+  and cards, checks and hints change gently instead of snapping
+* The gear in the top corner turns into the share button in Settings, and back on the way out
+* Dragged items lift and settle into place; the rest of the list no longer blinks after an edit
+* The floating button and its trash bin pop in and out, and a button dropped on the bin is swallowed by it
+* Light haptic ticks on drag, reorder, swipe-to-delete, the star and rocket, and switches
+* The mode picker keeps its text still when you pick a mode, and Mix's example sheet is full width like List's
+* Safer: other apps can no longer launch your items through Not App, and the debug log is private to the app
