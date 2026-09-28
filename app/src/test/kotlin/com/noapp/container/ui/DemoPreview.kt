@@ -34,7 +34,6 @@ internal fun DemoPreview(
         onOpenSetting = {},
         // Same decision ConfigScreen makes: a landscape screen keeps the sheet phone-wide.
         narrowSheet = LocalConfiguration.current.let { it.screenWidthDp > it.screenHeightDp },
-        onShowShortcuts = {},
         modifier = Modifier.fillMaxSize()
     )
 }

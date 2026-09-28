@@ -106,7 +106,8 @@ class ScreenSnapshots {
             slots = snapshotSlots,
             useAllSlotsInDirectMode = false,
             onOpenSettings = {},
-            onDismiss = {}
+            onDismiss = {},
+            modifier = Modifier.fillMaxSize()
         )
     }
 

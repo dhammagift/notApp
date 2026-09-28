@@ -1,5 +1,6 @@
 package com.noapp.container.shortcuts
 
+import com.noapp.container.ui.OverlayMotion
 import android.view.animation.OvershootInterpolator
 import android.view.HapticFeedbackConstants
 import android.animation.ValueAnimator
@@ -55,9 +56,9 @@ private const val DOCK_SCALE = 0.9f
 private const val DOCK_ALPHA_FACTOR = 0.6f
 private const val DOCK_ANIM_MS = 300L
 private const val UNDOCK_ANIM_MS = 160L
-private const val BUBBLE_IN_MS = 280L
-private const val TRASH_IN_MS = 220L
-private const val TRASH_OUT_MS = 180L
+private const val BUBBLE_IN_MS = OverlayMotion.BUBBLE_IN_MS
+private const val TRASH_IN_MS = OverlayMotion.TRASH_IN_MS
+private const val TRASH_OUT_MS = OverlayMotion.TRASH_OUT_MS
 
 /**
  * MIX/LIST mode's collapsed-list affordance: a small draggable button drawn as a

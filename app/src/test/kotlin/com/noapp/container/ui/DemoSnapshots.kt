@@ -74,7 +74,6 @@ class DemoSnapshots {
                     peekBubbleReturns = true,
                     onOpenSetting = {},
                     narrowSheet = false,
-                    onShowShortcuts = {},
                     modifier = Modifier.fillMaxSize()
                 )
             }

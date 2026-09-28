@@ -1,5 +1,6 @@
 package com.noapp.container.shortcuts
 
+import com.noapp.container.ui.OverlayMotion
 import android.view.animation.OvershootInterpolator
 import android.app.Service
 import android.content.Context
@@ -24,8 +25,8 @@ import com.noapp.container.MainActivity
 import com.noapp.container.R
 
 private const val DISPLAY_MS = 2500L
-private const val GEAR_IN_MS = 360L
-private const val GEAR_OUT_MS = 180L
+private const val GEAR_IN_MS = OverlayMotion.GEAR_IN_MS
+private const val GEAR_OUT_MS = OverlayMotion.GEAR_OUT_MS
 // Matches the Settings gear glyph's actual on-screen size (Material's default 24dp Icon,
 // as seen in ConfigScreen's own Settings button) — the 40dp box this used to render at
 // filled that whole area edge-to-edge once it became a solid vector glyph instead of a

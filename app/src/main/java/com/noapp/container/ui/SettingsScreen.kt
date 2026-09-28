@@ -308,10 +308,6 @@ fun SettingsScreen(
         }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().verticalScroll(scrollState)) {
-            // First thing in Settings while it is unanswered, and that is deliberate: in DIRECT
-            // mode this screen is the only place Not App itself is ever on screen, so the ask
-            // would otherwise be a row someone has to scroll past to find (or never notice).
-            ReviewCardIfDue(Modifier.padding(horizontal = 12.dp, vertical = 12.dp))
             ListItem(headlineContent = { Text(stringResource(R.string.settings_app_icon)) })
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -674,9 +670,9 @@ private fun PeekBubblePreview(size: Float, alpha: Float, dockPeek: Float, modifi
             .width(116.dp)
             .height(220.dp)
             .clip(RoundedCornerShape(16.dp))
-            // Darkest surface of the theme (near-black in dark, white in light) rather than
-            // surfaceVariant: the bubble's own grey blended into that in the dark theme.
-            .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+            // The demo's own backdrop: the bubble is judged against a screen, and this is the one
+            // the mode picker's example already draws.
+            .brandWallpaperBackground()
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
     ) {
         PreviewBubble(bubble, alpha, Modifier.align(Alignment.TopCenter).padding(top = 12.dp))

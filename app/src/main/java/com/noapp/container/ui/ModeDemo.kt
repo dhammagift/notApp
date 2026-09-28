@@ -1,5 +1,10 @@
 package com.noapp.container.ui
 
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.AnimatedVisibility
 import android.provider.Settings as AndroidSettings
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -81,6 +86,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.pointer.pointerInput
@@ -141,7 +147,6 @@ fun ModeDemo(
     peekBubbleReturns: Boolean,
     onOpenSetting: (SettingsSpot?) -> Unit,
     narrowSheet: Boolean,
-    onShowShortcuts: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val items = if (slots.isEmpty()) List(PLACEHOLDER_ROWS) { ShortcutSlot(id = it) } else slots
@@ -206,12 +211,15 @@ fun ModeDemo(
             // writes the user's settings.
             var bubbleGoneForSession by remember { mutableStateOf(false) }
             key(mode) {
+                // The launcher's long-press menu, drawn inside this panel and anchored to the icon (see
+                // ShortcutMenuOverlay). Inside the key, so a mode switch closes it.
+                var menuShown by remember { mutableStateOf(false) }
                 // Declared inside the key, so every mode starts from the same place: a freshly opened
                 // list and its button back. Kept outside, the state survived a mode switch and the
                 // button looked like the thing controlling how the next mode opened.
                 var collapsed by remember { mutableStateOf(false) }
                 var bubbleRemoved by remember { mutableStateOf(false) }
-                // Bumped by a tap on the icon in List: the sheet dips and springs back, so the tap
+                // Bumped by a tap on the icon in List and Mix: the sheet dips and springs back, so the tap
                 // reads as "that is what opens the list" instead of doing nothing visible.
                 var listPulse by remember { mutableIntStateOf(0) }
                 val bubbleGone = bubbleRemoved || (!peekBubbleReturns && bubbleGoneForSession)
@@ -222,9 +230,11 @@ fun ModeDemo(
                     DemoIconBlock(
                         mode = mode,
                         target = items[0],
-                        onShowShortcuts = onShowShortcuts,
+                        onShowShortcuts = { menuShown = true },
                         onTap = {
-                            if (mode == AppMode.LIST) {
+                            // List and Mix both open the list on a tap: Mix launches the first item AND
+                            // shows the list over it (a collapsed list comes back, an open one dips).
+                            if (mode == AppMode.LIST || mode == AppMode.MIX) {
                                 collapsed = false
                                 listPulse++
                             }
@@ -268,10 +278,18 @@ fun ModeDemo(
                                 }
                             }
                             Box(Modifier.fillMaxSize()) {
-                                if (gearVisible) {
+                                AnimatedVisibility(
+                                    visible = gearVisible,
+                                    modifier = Modifier.align(Alignment.TopEnd),
+                                    enter = fadeIn(tween(OverlayMotion.GEAR_IN_MS.toInt())) +
+                                        scaleIn(tween(OverlayMotion.GEAR_IN_MS.toInt()), initialScale = 0.6f),
+                                    exit = fadeOut(tween(OverlayMotion.GEAR_OUT_MS.toInt())) +
+                                        scaleOut(tween(OverlayMotion.GEAR_OUT_MS.toInt()), targetScale = 0.6f)
+                                ) {
                                     DemoGearChip(
                                         onClick = { onOpenSetting(null) },
-                                        modifier = Modifier.align(Alignment.TopEnd)
+                                        // The real overlay turns as it grows in.
+                                        modifier = Modifier.spinInOnAppear(fromDegrees = -120f)
                                     )
                                 }
                                 if (!useAllSlotsInDirectMode) {
@@ -298,6 +316,7 @@ fun ModeDemo(
                                 sharedText = if (shareCase) stringResource(R.string.mode_demo_share_text) else null,
                                 collapsed = collapsed,
                                 onCollapsedChange = { collapsed = it },
+                                pulse = listPulse,
                                 heightCap = minOf(
                                     panelHeight * SHEET_PANEL_FRACTION,
                                     (panelHeight - MIX_ICON_SPACE).coerceAtLeast(MIX_SHEET_MIN_HEIGHT)
@@ -337,6 +356,20 @@ fun ModeDemo(
                                 bubbleRemoved = true
                                 bubbleGoneForSession = true
                             }
+                        )
+                    }
+                    if (menuShown) {
+                        ShortcutMenuOverlay(
+                            appName = stringResource(R.string.app_name),
+                            mode = mode,
+                            slots = slots,
+                            useAllSlotsInDirectMode = useAllSlotsInDirectMode,
+                            onOpenSettings = {
+                                menuShown = false
+                                onOpenSetting(null)
+                            },
+                            onDismiss = { menuShown = false },
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
                 }
@@ -499,6 +532,7 @@ private fun BoxScope.DemoPeekPill(onOpen: () -> Unit) {
     ) {
         Box(
             Modifier
+                .popInOnAppear()
                 .size(PEEK_BUBBLE)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.primaryContainer)
@@ -587,6 +621,15 @@ private fun DemoSheet(
     // Same shape as the real sheet's offset: an Animatable the drag offsets live, so the release can
     // hand its velocity to the settling animation.
     val offsetY = remember { Animatable(0f) }
+    // The sheet arrives the way the real one does (SheetMotion): it rises from just under its own
+    // bottom edge on the same spring, and the gear and the rows start once it is on its way.
+    var arrived by remember { mutableStateOf(false) }
+    LaunchedEffect(sheetHeightPx > 0) {
+        if (sheetHeightPx == 0 || arrived) return@LaunchedEffect
+        offsetY.snapTo(sheetHeightPx.toFloat())
+        arrived = true
+        offsetY.animateTo(if (collapsed) hiddenPx else 0f, SheetMotion.enterSpring)
+    }
     LaunchedEffect(collapsed) {
         // The floating button opens the list, and that has to move the sheet too.
         if (!dragging && !settlingFromDrag) {
@@ -605,6 +648,8 @@ private fun DemoSheet(
         modifier = modifier
             .heightIn(max = heightCap)
             .onSizeChanged { sheetHeightPx = it.height }
+            // Invisible for the frame before it has been measured, so it never shows at rest first.
+            .graphicsLayer { alpha = if (arrived) 1f else 0f }
             .offset { IntOffset(0, (offsetY.value + dragPx).roundToInt()) }
             .draggable(
                 orientation = Orientation.Vertical,
@@ -703,7 +748,8 @@ private fun DemoSheet(
                     Icon(
                         Icons.Default.Settings,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.sheetGearMotion(arrived)
                     )
                 }
             }
@@ -728,7 +774,8 @@ private fun DemoSheet(
                                 overflow = TextOverflow.Ellipsis
                             )
                         },
-                        leadingContent = { DemoIcon(slot, startNumber + index, 32.dp) }
+                        leadingContent = { DemoIcon(slot, startNumber + index, 32.dp) },
+                        modifier = Modifier.sheetRowMotion(index, arrived)
                     )
                 }
             }
@@ -794,11 +841,14 @@ private fun BoxScope.DemoPeekBubble(
     val overTrash = overTrashAt(position.value)
 
     // Shown only while the button is being dragged, exactly like the app's ✕ target.
-    if (dragging) {
+    AnimatedVisibility(
+        visible = dragging,
+        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = TRASH_BOTTOM_MARGIN),
+        enter = fadeIn(tween(OverlayMotion.TRASH_IN_MS.toInt())) + scaleIn(tween(OverlayMotion.TRASH_IN_MS.toInt()), initialScale = 0.5f),
+        exit = fadeOut(tween(OverlayMotion.TRASH_OUT_MS.toInt())) + scaleOut(tween(OverlayMotion.TRASH_OUT_MS.toInt()), targetScale = 0.5f)
+    ) {
         Box(
             Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = TRASH_BOTTOM_MARGIN)
                 .size(TRASH_SIZE)
                 .background(if (overTrash) TRASH_ACTIVE else TRASH_IDLE, CircleShape)
                 .pointerInput(Unit) { detectTapGestures { onRemove() } },
@@ -828,6 +878,7 @@ private fun BoxScope.DemoPeekBubble(
                 scaleX = s
                 scaleY = s
             }
+            .popInOnAppear()
             .background(PEEK_COLOR, CircleShape)
             .pointerInput(Unit) { detectTapGestures { onOpen() } }
             .pointerInput(sizePx) {
@@ -912,7 +963,8 @@ fun ShortcutMenuOverlay(
     slots: List<ShortcutSlot>,
     useAllSlotsInDirectMode: Boolean,
     onOpenSettings: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val configured = slots.filter { it.isConfigured }
     val empty = configured.isEmpty()
@@ -928,70 +980,87 @@ fun ShortcutMenuOverlay(
         (if (showConfigure) listOf<ShortcutSlot?>(null) else emptyList()) +
             realRows.take(SHORTCUT_MENU_ROWS).map { it as ShortcutSlot? }
 
-    Box(
-        Modifier
-            .fillMaxSize()
+    // Grows out of the icon's corner, the way a launcher's menu opens from the icon it belongs to.
+    val grow = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { grow.animateTo(1f, spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMedium)) }
+
+    // Fills the demo panel only (the caller sizes it): dimming and dismissing stay inside the picture of
+    // a home screen, which is what the menu is a picture of.
+    BoxWithConstraints(
+        modifier
             .background(Color.Black.copy(alpha = SCRIM_ALPHA))
-            .pointerInput(Unit) { detectTapGestures { onDismiss() } },
-        contentAlignment = Alignment.Center
+            .pointerInput(Unit) { detectTapGestures { onDismiss() } }
     ) {
+        // Under the icon when the panel has room for it, as launchers do; beside it (on the icon's left)
+        // when the panel is too short, so the card is never cut off by the panel's edge.
+        val cardHeight = MENU_HEADER_HEIGHT + MENU_ROW_HEIGHT * entries.size + MENU_PADDING * 2
+        val below = maxHeight >= MENU_ICON_BOTTOM + cardHeight + MENU_EDGE
         Surface(
-            // Taps on the card itself are swallowed, so only an outside tap dismisses it — the same
-            // as the menu it imitates. Its width is what its icons and labels need and no wider: the
-            // real menu is a phone-sized card, and stretched across a tablet it looked nothing like it.
+            // Taps on the card itself are swallowed, so only an outside tap dismisses it — the same as the
+            // menu it imitates.
             modifier = Modifier
-                .widthIn(max = MENU_MAX_WIDTH)
-                .fillMaxWidth()
+                .align(Alignment.TopEnd)
+                .padding(
+                    top = if (below) MENU_ICON_BOTTOM else MENU_EDGE,
+                    end = if (below) MENU_EDGE + 12.dp else HOME_ICON + MENU_EDGE * 2 + 12.dp
+                )
+                .width(MENU_WIDTH)
+                .graphicsLayer {
+                    alpha = grow.value.coerceIn(0f, 1f)
+                    val scale = 0.8f + 0.2f * grow.value
+                    scaleX = scale
+                    scaleY = scale
+                    transformOrigin = TransformOrigin(1f, 0f)
+                }
                 .pointerInput(Unit) { detectTapGestures { } },
-            shape = RoundedCornerShape(28.dp),
+            shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             shadowElevation = 12.dp
         ) {
-            Column(Modifier.padding(vertical = 12.dp)) {
+            Column(Modifier.padding(vertical = MENU_PADDING)) {
                 Row(
-                    Modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp),
+                    Modifier.fillMaxWidth().height(MENU_HEADER_HEIGHT).padding(start = 16.dp, end = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Balances the info icon, so the name stays centred as it is in that menu.
-                    Spacer(Modifier.width(24.dp))
+                    Spacer(Modifier.width(20.dp))
                     Text(
                         appName,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleSmall,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.weight(1f)
                     )
                     Icon(
                         Icons.Default.Info,
                         contentDescription = null,
+                        modifier = Modifier.size(20.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Spacer(Modifier.height(4.dp))
-                entries.take(SHORTCUT_MENU_ROWS).forEach { slot ->
-                    ListItem(
+                entries.forEach { slot ->
+                    Row(
                         // The Configure entry is a real way in, exactly as it is in the launcher's
                         // menu: tapping it goes to Settings.
-                        modifier = if (slot == null) {
-                            Modifier.clickable { onOpenSettings() }
-                        } else {
-                            Modifier
-                        },
-                        headlineContent = {
-                            Text(
-                                if (slot == null) {
-                                    stringResource(R.string.shortcut_configure_label)
-                                } else {
-                                    labelOf(slot, slot.id + 1)
-                                },
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        },
-                        leadingContent = {
-                            DemoIcon(slot, if (slot == null) 0 else slot.id + 1, 40.dp)
-                        },
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                    )
+                        Modifier
+                            .fillMaxWidth()
+                            .height(MENU_ROW_HEIGHT)
+                            .then(if (slot == null) Modifier.clickable { onOpenSettings() } else Modifier)
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        DemoIcon(slot, if (slot == null) 0 else slot.id + 1, MENU_ICON)
+                        Spacer(Modifier.width(14.dp))
+                        Text(
+                            if (slot == null) {
+                                stringResource(R.string.shortcut_configure_label)
+                            } else {
+                                labelOf(slot, slot.id + 1)
+                            },
+                            style = MaterialTheme.typography.bodyLarge,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }
@@ -1210,6 +1279,12 @@ private fun labelOf(slot: ShortcutSlot, number: Int): String =
  * wallpaper — reading that is restricted on recent Android versions — but it does have to look like a
  * screen, which a flat surface colour never did.
  */
+@Composable
+fun Modifier.brandWallpaperBackground(): Modifier {
+    val mark = painterResource(R.drawable.ic_not_app_mark)
+    return drawBehind { brandWallpaper(mark) }
+}
+
 private fun DrawScope.brandWallpaper(mark: Painter) {
     drawRect(
         Brush.linearGradient(
@@ -1330,4 +1405,12 @@ private const val SHORTCUT_MENU_ROWS = 4
 private const val SCRIM_ALPHA = 0.32f
 
 /** The real menu is a phone-sized card, not a full-width sheet — capped so a tablet gets that too. */
-private val MENU_MAX_WIDTH = 300.dp
+// The menu is a phone-sized card at a fixed width, not stretched to its container. It hangs under the icon
+// (the icon block sits 62dp from the panel's top and is HOME_ICON tall).
+private val MENU_WIDTH = 224.dp
+private val MENU_ICON_BOTTOM = 62.dp + HOME_ICON + 8.dp
+private val MENU_EDGE = 8.dp
+private val MENU_HEADER_HEIGHT = 40.dp
+private val MENU_ROW_HEIGHT = 48.dp
+private val MENU_PADDING = 6.dp
+private val MENU_ICON = 32.dp

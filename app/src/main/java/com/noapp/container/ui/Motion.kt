@@ -1,5 +1,12 @@
 package com.noapp.container.ui
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
@@ -54,10 +61,12 @@ fun MorphIcon(to: ImageVector, contentDescription: String?, from: ImageVector? =
 
 /** A cog that turns into place as it appears, like a gear catching. */
 @Composable
-fun Modifier.spinInOnAppear(fromDegrees: Float = -150f): Modifier {
+fun Modifier.spinInOnAppear(fromDegrees: Float = -150f, delayMillis: Long = 0, start: Boolean = true): Modifier {
     val turn = remember { Animatable(fromDegrees) }
-    LaunchedEffect(Unit) {
-        turn.animateTo(0f, spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessLow))
+    LaunchedEffect(start) {
+        if (!start) return@LaunchedEffect
+        delay(delayMillis)
+        turn.animateTo(0f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessVeryLow))
     }
     return graphicsLayer { rotationZ = turn.value }
 }
@@ -83,10 +92,11 @@ fun Modifier.popInOnAppear(): Modifier {
  * down, a row scrolled into view must not be kept waiting.
  */
 @Composable
-fun Modifier.riseInOnAppear(order: Int): Modifier {
+fun Modifier.riseInOnAppear(order: Int, baseDelayMillis: Int = 0, start: Boolean = true): Modifier {
     val shown = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
-        shown.animateTo(1f, tween(RISE_MS, delayMillis = order.coerceAtMost(RISE_MAX_STEPS) * RISE_STEP_MS, easing = FastOutSlowInEasing))
+    LaunchedEffect(start) {
+        if (!start) return@LaunchedEffect
+        shown.animateTo(1f, tween(RISE_MS, delayMillis = baseDelayMillis + order.coerceAtMost(RISE_MAX_STEPS) * RISE_STEP_MS, easing = FastOutSlowInEasing))
     }
     return graphicsLayer {
         alpha = shown.value
@@ -94,8 +104,68 @@ fun Modifier.riseInOnAppear(order: Int): Modifier {
     }
 }
 
-private const val RISE_MS = 260
-private const val RISE_STEP_MS = 35
+private const val RISE_MS = 340
+private const val RISE_STEP_MS = 55
 private const val RISE_MAX_STEPS = 6
-private const val RISE_DP = 12f
+private const val RISE_DP = 20f
+/** Shrinks a little under the finger and springs back on release. */
+@Composable
+fun Modifier.pressScale(source: InteractionSource, pressedScale: Float = 0.92f): Modifier {
+    val pressed by source.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        if (pressed) pressedScale else 1f,
+        spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium),
+        label = "pressScale"
+    )
+    return graphicsLayer { scaleX = scale; scaleY = scale }
+}
+
+/** Pops once whenever [key] changes (not on first composition): a marker being switched on or off. */
+@Composable
+fun Modifier.popOnChange(key: Any?): Modifier {
+    val pop = remember { Animatable(1f) }
+    var first by remember { mutableStateOf(true) }
+    LaunchedEffect(key) {
+        if (first) { first = false; return@LaunchedEffect }
+        pop.snapTo(1.5f)
+        pop.animateTo(1f, spring(dampingRatio = 0.3f, stiffness = Spring.StiffnessMedium))
+    }
+    return graphicsLayer { scaleX = pop.value; scaleY = pop.value }
+}
+
+/**
+ * Everything the list sheet does when it arrives, in one place. The real sheet (QuickPickSheet) and the
+ * mode picker's copy of it (ModeDemo's DemoSheet) both take their numbers and their modifiers from
+ * here, so the example cannot drift from the app: change a value or a step here and both change.
+ */
+object SheetMotion {
+    val enterSpring = spring<Float>(dampingRatio = 0.72f, stiffness = Spring.StiffnessLow)
+    const val GEAR_TURN_DEGREES = -360f
+    const val GEAR_DELAY_MS = 320L
+    const val ROWS_DELAY_MS = 260
+}
+
+/** The Configure gear: a full turn once the sheet has landed. */
+@Composable
+fun Modifier.sheetGearMotion(arrived: Boolean): Modifier =
+    spinInOnAppear(SheetMotion.GEAR_TURN_DEGREES, SheetMotion.GEAR_DELAY_MS, arrived)
+
+/** One row of the sheet: risen into place [index] steps after the first, once the sheet has landed. */
+@Composable
+fun Modifier.sheetRowMotion(index: Int, arrived: Boolean): Modifier =
+    riseInOnAppear(index, SheetMotion.ROWS_DELAY_MS, arrived)
+
+/**
+ * Timings of the system overlays (the Direct-mode gear, the floating button and its trash target).
+ * The overlays are plain Views and animate themselves; the demo draws the same things in Compose.
+ * Both read these.
+ */
+object OverlayMotion {
+    const val GEAR_IN_MS = 360L
+    const val GEAR_OUT_MS = 180L
+    const val BUBBLE_IN_MS = 280L
+    const val TRASH_IN_MS = 220L
+    const val TRASH_OUT_MS = 180L
+}
+
 private const val MORPH_MS = 420

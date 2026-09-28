@@ -1,5 +1,7 @@
 package com.noapp.container.ui
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings as AndroidSettings
@@ -82,7 +84,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
@@ -136,6 +140,7 @@ private val CARDS_MAX_HEIGHT = 340.dp
  * height comes out of the example's share, which is a preview and can afford it.
  */
 private val CARDS_MAX_HEIGHT_TALL = 420.dp
+private const val REVEAL_OUT_MS = 200
 private const val CARDS_TALL_FRACTION = 0.47f
 
 
@@ -192,7 +197,6 @@ private fun ModePickerDialog(
     val context = LocalContext.current
     var pendingMode by remember { mutableStateOf<AppMode?>(null) }
     var showGearExplainer by remember { mutableStateOf(false) }
-    var shortcutsShown by remember { mutableStateOf(false) }
     val configuration = LocalConfiguration.current
     val wideLandscape = configuration.screenWidthDp > configuration.screenHeightDp
     val cardsMaxHeight = (configuration.screenHeightDp * CARDS_TALL_FRACTION).dp
@@ -257,14 +261,43 @@ private fun ModePickerDialog(
         )
     }
 
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
+    // The picker grows out of the chip that opened it (top right) and folds back into it, instead of a
+    // window simply being there: the tap on the chip gets an answer.
+    var revealed by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { revealed = true }
+    val reveal by animateFloatAsState(
+        if (revealed) 1f else 0f,
+        if (revealed) spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow) else tween(REVEAL_OUT_MS),
+        label = "modeReveal"
+    )
+    val revealScope = rememberCoroutineScope()
+    val closeAnimated: () -> Unit = {
+        if (revealed) {
+            revealed = false
+            revealScope.launch {
+                delay(REVEAL_OUT_MS.toLong())
+                onDismiss()
+            }
+        }
+    }
+
+    Dialog(onDismissRequest = closeAnimated, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            Modifier.fillMaxSize().graphicsLayer {
+                alpha = reveal.coerceIn(0f, 1f)
+                val grow = 0.82f + 0.18f * reveal
+                scaleX = grow
+                scaleY = grow
+                transformOrigin = TransformOrigin(0.86f, 0.04f)
+            },
+            color = MaterialTheme.colorScheme.surface
+        ) {
             Box(Modifier.fillMaxSize()) {
                 Column(Modifier.fillMaxSize()) {
                     TopAppBar(
                         title = { Text(stringResource(R.string.config_mode_dialog_title)) },
                         navigationIcon = {
-                            IconButton(onClick = onDismiss) {
+                            IconButton(onClick = closeAnimated) {
                                 Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_close))
                             }
                         }
@@ -290,8 +323,7 @@ private fun ModePickerDialog(
                                 onOpenSetting(spot)
                             },
                             narrowSheet = wideLandscape,
-                            onShowShortcuts = { shortcutsShown = true },
-                            modifier = demoModifier
+                            modifier = demoModifier.riseInOnAppear(3, baseDelayMillis = 120)
                         )
                     }
                     if (wideLandscape) {
@@ -337,19 +369,6 @@ private fun ModePickerDialog(
                                 .padding(horizontal = 16.dp, vertical = 12.dp)
                         )
                     }
-                }
-                if (shortcutsShown) {
-                    ShortcutMenuOverlay(
-                        appName = stringResource(R.string.app_name),
-                        mode = currentMode,
-                        slots = slots,
-                        useAllSlotsInDirectMode = useAllSlotsInDirectMode,
-                        onOpenSettings = {
-                            shortcutsShown = false
-                            onOpenSetting(null)
-                        },
-                        onDismiss = { shortcutsShown = false }
-                    )
                 }
             }
         }
@@ -466,8 +485,14 @@ fun ConfigScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
+                    val chipSource = remember { MutableInteractionSource() }
                     AssistChip(
-                        onClick = { modeDialogVisible = true },
+                        onClick = {
+                            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                            modeDialogVisible = true
+                        },
+                        interactionSource = chipSource,
+                        modifier = Modifier.pressScale(chipSource).animateContentSize(),
                         label = {
                             AnimatedContent(mode, transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(120)) }, label = "modeChip") {
                                 Text(stringResource(it.labelRes()))
@@ -604,27 +629,36 @@ fun ConfigScreen(
                         label = "dragOffset"
                     )
                     val positionLabel = if (mode != AppMode.LIST && index == 0) mainPositionLabel else stringResource(R.string.common_item_n, index + 1)
+                    // Rows keep their key across edits now, so the state below outlives a reorder: what it
+                    // calls has to read the current index and list, not the ones from when it was made.
+                    val currentIndex by rememberUpdatedState(index)
+                    val currentOnSlotsChanged by rememberUpdatedState(onSlotsChanged)
+                    val swipeRemove by rememberUpdatedState {
+                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        removeWithUndo(
+                            previous = slots,
+                            updated = slots.filterIndexed { i, _ -> i != index }.mapIndexed { i, s -> s.copy(id = i) },
+                            message = context.getString(R.string.config_removed_named, slot.label.ifBlank { positionLabel })
+                        )
+                    }
                     val dismissState = rememberSwipeToDismissBoxState(
                         confirmValueChange = { value ->
-                            if (value != SwipeToDismissBoxValue.Settled) {
-                                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                removeWithUndo(
-                                    previous = slots,
-                                    updated = slots.filterIndexed { i, _ -> i != index }.mapIndexed { i, s -> s.copy(id = i) },
-                                    message = context.getString(R.string.config_removed_named, slot.label.ifBlank { positionLabel })
-                                )
-                            }
+                            if (value != SwipeToDismissBoxValue.Settled) swipeRemove()
                             true
                         }
                     )
                     SwipeToDismissBox(
                         state = dismissState,
                         backgroundContent = {
-                            Box(
-                                Modifier.fillMaxSize().background(MaterialTheme.colorScheme.errorContainer).padding(horizontal = 20.dp),
-                                contentAlignment = Alignment.CenterEnd
-                            ) {
-                                Icon(Icons.Default.Delete, contentDescription = deleteDesc, tint = MaterialTheme.colorScheme.onErrorContainer)
+                            // Only while a swipe is under way: a dragged row slides over this too,
+                            // and the red must not show through the gap it leaves.
+                            if (dismissState.dismissDirection != SwipeToDismissBoxValue.Settled) {
+                                Box(
+                                    Modifier.fillMaxSize().background(MaterialTheme.colorScheme.errorContainer).padding(horizontal = 20.dp),
+                                    contentAlignment = Alignment.CenterEnd
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = deleteDesc, tint = MaterialTheme.colorScheme.onErrorContainer)
+                                }
                             }
                         }
                     ) {
@@ -666,6 +700,7 @@ fun ConfigScreen(
                                         contentDescription = stringResource(R.string.config_main_marker),
                                         tint = if (index == 0) MaterialTheme.colorScheme.primary else inactiveTint,
                                         modifier = Modifier
+                                            .popOnChange(index == 0)
                                             .size(24.dp)
                                             .clickable {
                                             view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
@@ -687,6 +722,7 @@ fun ConfigScreen(
                                     contentDescription = stringResource(R.string.config_tile_marker),
                                     tint = if (isTileTarget) MaterialTheme.colorScheme.primary else inactiveTint,
                                     modifier = Modifier
+                                        .popOnChange(isTileTarget)
                                         .size(24.dp)
                                         .clickable(enabled = slot.isConfigured) {
                                             val key = slot.targetKey ?: return@clickable
@@ -735,6 +771,7 @@ fun ConfigScreen(
                             }
                         },
                         modifier = Modifier
+                            .riseInOnAppear(index)
                             .zIndex(if (isDragging || lift > 0f) 1f else 0f)
                             .then(if (isDragging) Modifier else Modifier.animateItem())
                             .graphicsLayer {
@@ -748,9 +785,9 @@ fun ConfigScreen(
                                 detectDragGesturesAfterLongPress(
                                     onDragStart = {
                                         view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                        dragState.onDragStart(index)
+                                        dragState.onDragStart(currentIndex)
                                     },
-                                    onDragEnd = { dragState.onDragEnd(onSlotsChanged) },
+                                    onDragEnd = { dragState.onDragEnd(currentOnSlotsChanged) },
                                     onDragCancel = dragState::onDragCancel,
                                     onDrag = { change, drag ->
                                         change.consume()
@@ -764,6 +801,13 @@ fun ConfigScreen(
                 HorizontalDivider()
             }
             }
+            // The rating ask lives on this screen, not in Settings: a Direct-mode user may never open
+            // Settings, but this is the app's own window. Pinned above the two round buttons so it
+            // never moves with the list.
+            ReviewCardIfDue(
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 88.dp),
+                containerModifier = Modifier.align(Alignment.BottomCenter)
+            )
             // Pinned to the bottom-left rather than trailing the items: as a list row it moved every
             // time an item was added or removed, and it is not an item.
             FilledTonalButton(
@@ -815,7 +859,7 @@ fun ConfigScreen(
 @Composable
 private fun ModeCards(currentMode: AppMode, onSelect: (AppMode) -> Unit, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        AppMode.entries.forEach { candidate ->
+        AppMode.entries.forEachIndexed { index, candidate ->
             val selected = candidate == currentMode
             Surface(
                 onClick = { onSelect(candidate) },
@@ -825,7 +869,15 @@ private fun ModeCards(currentMode: AppMode, onSelect: (AppMode) -> Unit, modifie
                     tween(220),
                     label = "modeCard"
                 ).value,
-                modifier = Modifier.fillMaxWidth()
+                // Explicit, and animated on the same clock as the fill. Left to Surface it works the
+                // text colour out from the fill, and a fill that is halfway between two theme colours
+                // matches none of them: the text fell back to black for the length of the fade.
+                contentColor = animateColorAsState(
+                    if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tween(220),
+                    label = "modeCardText"
+                ).value,
+                modifier = Modifier.fillMaxWidth().riseInOnAppear(index, baseDelayMillis = 120)
             ) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
                     Column(Modifier.weight(1f)) {
@@ -866,24 +918,27 @@ private fun ModeCards(currentMode: AppMode, onSelect: (AppMode) -> Unit, modifie
                         }
                         Text(description, style = MaterialTheme.typography.bodyMedium)
                     }
-                    // The check's room is always there, so choosing a mode never reflows the text
-                    // (and never changes the card's height); only the check itself appears.
-                    val check by animateFloatAsState(
+                    // A slot that is always there, so choosing a mode never changes how wide the text
+                    // beside it is: the mark only fades and scales inside it. (Animating the icon's
+                    // presence instead resized the text column every frame and the description
+                    // re-wrapped its lines while the card changed colour.)
+                    val checkProgress by animateFloatAsState(
                         if (selected) 1f else 0f,
-                        spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium),
+                        spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium),
                         label = "modeCheck"
                     )
-                    Icon(
-                        Icons.Default.Check,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .padding(start = 8.dp)
-                            .graphicsLayer {
-                                alpha = check.coerceIn(0f, 1f)
-                                scaleX = 0.3f + 0.7f * check
-                                scaleY = 0.3f + 0.7f * check
+                    Box(Modifier.padding(start = 8.dp).size(24.dp), contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.graphicsLayer {
+                                alpha = checkProgress.coerceIn(0f, 1f)
+                                scaleX = checkProgress
+                                scaleY = checkProgress
+                                rotationZ = (1f - checkProgress) * -90f
                             }
-                    )
+                        )
+                    }
                 }
             }
         }

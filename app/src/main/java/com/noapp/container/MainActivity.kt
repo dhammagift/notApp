@@ -7,7 +7,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -517,9 +521,15 @@ private fun NoAppRoot(
             val settings = initialState is Screen.Settings || targetState is Screen.Settings
             val dir = if (targetState is Screen.Config) -1 else 1
             if (settings) {
-                fadeIn(tween(SCREEN_FADE_IN_MS, delayMillis = SCREEN_FADE_OUT_MS / 2)) togetherWith fadeOut(tween(SCREEN_FADE_OUT_MS))
+                // Going in, Settings grows out of the screen it replaces; coming back, Config does. The
+                // top-right button stays where it is, so the gear can turn into share as it goes.
+                val enter = fadeIn(tween(SCREEN_FADE_IN_MS, delayMillis = SCREEN_FADE_OUT_MS / 2)) +
+                    scaleIn(spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow), initialScale = if (dir > 0) 0.9f else 1.06f)
+                val exit = fadeOut(tween(SCREEN_FADE_OUT_MS)) +
+                    scaleOut(tween(SCREEN_FADE_OUT_MS), targetScale = if (dir > 0) 1.06f else 0.9f)
+                enter togetherWith exit
             } else {
-                (fadeIn(tween(SCREEN_FADE_IN_MS)) + slideInHorizontally(tween(SCREEN_SLIDE_MS)) { dir * it / 6 }) togetherWith
+                (fadeIn(tween(SCREEN_FADE_IN_MS)) + slideInHorizontally(spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)) { dir * it / 4 }) togetherWith
                     (fadeOut(tween(SCREEN_FADE_OUT_MS)) + slideOutHorizontally(tween(SCREEN_SLIDE_MS)) { -dir * it / 6 })
             }
         },
