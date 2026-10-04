@@ -2,8 +2,6 @@ package com.noapp.container.ui
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import android.content.Intent
-import android.net.Uri
 import android.provider.Settings as AndroidSettings
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -235,7 +233,7 @@ private fun ModePickerDialog(
                 PromptStore.markPeekExplained(context)
                 pendingMode = null
                 overlaySettingsLauncher.launch(
-                    Intent(AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
+                    appSettingsIntent(context, AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION)
                 )
             },
             onDismiss = {
@@ -251,7 +249,7 @@ private fun ModePickerDialog(
                 PromptStore.markGearExplained(context)
                 showGearExplainer = false
                 overlaySettingsLauncher.launch(
-                    Intent(AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
+                    appSettingsIntent(context, AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION)
                 )
             },
             onDismiss = {

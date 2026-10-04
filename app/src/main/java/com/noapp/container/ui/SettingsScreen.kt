@@ -616,7 +616,7 @@ fun SettingsScreen(
                 TextButton(onClick = {
                     showOverlayExplainer = false
                     overlaySettingsLauncher.launch(
-                        Intent(AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
+                        appSettingsIntent(context, AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION)
                     )
                 }) { Text(stringResource(R.string.settings_continue)) }
             },
@@ -631,7 +631,7 @@ fun SettingsScreen(
             onContinue = {
                 showPeekOverlayExplainer = false
                 peekOverlaySettingsLauncher.launch(
-                    Intent(AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))
+                    appSettingsIntent(context, AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION)
                 )
             },
             onDismiss = { showPeekOverlayExplainer = false }
@@ -646,7 +646,7 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showUsageAccessExplainer = false
-                    usageAccessSettingsLauncher.launch(Intent(AndroidSettings.ACTION_USAGE_ACCESS_SETTINGS))
+                    usageAccessSettingsLauncher.launch(appSettingsIntent(context, AndroidSettings.ACTION_USAGE_ACCESS_SETTINGS, withPackageUri = false))
                 }) { Text(stringResource(R.string.settings_continue)) }
             },
             dismissButton = {
