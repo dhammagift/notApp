@@ -1,7 +1,6 @@
 # Not App
 
 A flexible Android launcher app that turns your home screen icon into a customizable command center.
-<a href="https://play.google.com/store/apps/details?id=gift.dhamma.noapp&hl=en"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="80"/></a>
 
 
 ![Not App Android Mockup](icons/notApp-android.jpg)
@@ -9,6 +8,9 @@ A flexible Android launcher app that turns your home screen icon into a customiz
 ## What is Not App?
 
 Instead of cluttering your home screen with dozens of app shortcuts, **Not App** gives you one icon that does many things. Configure it once, tap it endlessly.
+
+<a href="https://play.google.com/store/apps/details?id=gift.dhamma.noapp&hl=en"><img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="80"/></a>
+
 
 ## How It Works
 
