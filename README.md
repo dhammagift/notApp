@@ -2,8 +2,8 @@
 
 A flexible Android launcher app that turns your home screen icon into a customizable command center.
 
+<a href="https://play.google.com/store/apps/details?id=gift.dhamma.noapp&hl=en"><img alt="Get it on Google Play" src="icons/notApp-android.jpg" height="350"/></a>
 
-![Not App Android Mockup](icons/notApp-android.jpg)
 
 ## What is Not App?
 
