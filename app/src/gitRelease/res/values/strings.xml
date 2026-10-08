@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The GitHub copy's name under the icon (build type gitRelease, package gift.dhamma.noapp.git): next to Not App from Google Play. -->
+<resources>
+    <string name="app_name">Not App Git</string>
+</resources>

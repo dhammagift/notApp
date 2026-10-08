@@ -39,7 +39,7 @@ android {
         // The only version to edit. versionName is what people see; versionCode is Play's
         // internal ordering number, which must grow with every upload — derived here so it
         // can't be forgotten or collide: major*10000 + minor*100 + patch (0.5.1 -> 501).
-        val appVersion = "0.6.3"
+        val appVersion = "0.6.4"
         versionName = appVersion
         // A build carrying the switch says so in its version name (Settings shows it), so it can never
         // be mistaken for a normal one.
@@ -54,6 +54,13 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+        // The copy that GitHub releases carry: the release build under its own package (gift.dhamma.noapp.git) and its own name
+        // ("Not App Git", src/gitRelease/res), so it installs NEXT TO the Play app instead of over it - two apps, two separate
+        // settings and shortcut lists. Google Play gets the plain release (gift.dhamma.noapp); this one never goes there.
+        create("gitRelease") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".git"
         }
     }
 

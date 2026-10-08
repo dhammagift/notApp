@@ -107,11 +107,27 @@ jobs:
       - name: Build Release Bundle
         run: ./gradlew app:bundleRelease
 
+      # The GitHub copy: its own package (gift.dhamma.noapp.git) and name (Not App Git), so it lives next to the Play app.
+      - name: Build GitHub copy APK
+        run: ./gradlew app:assembleGitRelease
+
       - name: Sign APK
         uses: r0adkll/sign-android-release@v1
         id: sign_app
         with:
           releaseDirectory: app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
+          alias: ${{ secrets.KEYSTORE_ALIAS }}
+          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "36.0.0"
+
+      - name: Sign GitHub copy APK
+        uses: r0adkll/sign-android-release@v1
+        id: sign_git
+        with:
+          releaseDirectory: app/build/outputs/apk/gitRelease
           signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
           alias: ${{ secrets.KEYSTORE_ALIAS }}
           keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -134,6 +150,7 @@ jobs:
       - name: Rename release artifacts
         run: |
           mv "${{ steps.sign_app.outputs.signedReleaseFile }}" NotApp.apk
+          mv "${{ steps.sign_git.outputs.signedReleaseFile }}" NotApp-git.apk
           mv "${{ steps.sign_bundle.outputs.signedReleaseFile }}" NotApp.aab
 
       # Branch push, or manual "Run workflow" with no version filled in: just hand back the
@@ -147,6 +164,7 @@ jobs:
           name: NotApp-${{ github.sha }}${{ inputs.alwaysAskForReview && '-TEST-always-review' || '' }}
           path: |
             NotApp.apk
+            NotApp-git.apk
             NotApp.aab
           retention-days: 14
 
@@ -157,9 +175,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
+          # GitHub carries the copy with its own package (NotApp-git.apk); the plain NotApp.apk / .aab are Google Play's package and
+          # go only to the store, so nobody installs the Play package over a Play install from here.
           files: |
-            NotApp.apk
-            NotApp.aab
+            NotApp-git.apk
           draft: false
           prerelease: false
           generate_release_notes: true

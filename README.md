@@ -6,6 +6,12 @@
 
 <a href="https://play.google.com/store/apps/details?id=gift.dhamma.noapp&hl=en"><img alt="Not App on Google Play" src="icons/notApp-android.jpg" height="350"/></a>
 
+## Two copies side by side
+
+GitHub releases carry **Not App Git** (`gift.dhamma.noapp.git`): the same app under its own package and name. It installs next to the
+Google Play app (`gift.dhamma.noapp`), not over it, and keeps its own settings and shortcut list - handy for two setups on one phone.
+Use Settings → export / import to move a list from one to the other.
+
 ## What is Not App?
 
 Instead of cluttering your home screen with dozens of app shortcuts, **Not App** gives you one icon that does many things. It lives on your home screen alongside any launcher — no need to replace the one you love.
