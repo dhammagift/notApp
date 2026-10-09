@@ -274,3 +274,29 @@ jobs:
           name: first-launch-api${{ matrix.api }}
           path: out/
           retention-days: 14
+
+  # The screens drawn on the JVM (Roborazzi, see ScreenSnapshots*), so a UI change can be looked at
+  # straight from the run's artifacts. Test builds only, same as first-launch.
+  snapshots:
+    if: github.ref_type != 'tag' && (github.event_name != 'workflow_dispatch' || github.event.inputs.version == '')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+      - name: Render screens
+        env:
+          RENDER_SNAPSHOTS: '1'
+        run: chmod +x gradlew && ./gradlew :app:testDebugUnitTest --tests "*ScreenSnapshots*"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snapshots
+          path: app/build/snapshots/
+          retention-days: 14

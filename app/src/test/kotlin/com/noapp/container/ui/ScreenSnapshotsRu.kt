@@ -85,4 +85,10 @@ class ScreenSnapshotsRu {
     fun demoDark() = shoot("34-demo-mix-dark-ru") {
         NoAppTheme(AppTheme.DARK) { DemoPreview(AppMode.MIX) }
     }
+
+    /** The list's row of actions (star, rocket, pin, cross, handle) in dark. */
+    @Test
+    fun itemListDark() = shoot("35-item-list-dark-ru") {
+        NoAppTheme(AppTheme.DARK) { ConfigScreenPreview() }
+    }
 }
