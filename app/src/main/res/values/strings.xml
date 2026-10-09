@@ -23,10 +23,6 @@
     <string name="settings_show_recent_apps_hint">If you want to see recently used apps separately in the list, I\'ll need Usage access permission.</string>
     <string name="settings_usage_access_dialog_title">Usage access</string>
     <string name="settings_usage_access_dialog_text">To show a row of recently-used apps, I\'ll need the \"Usage access\" permission. You\'ll be taken to system settings — find Not App in the list and turn it on.</string>
-    <string name="settings_pin_title">Pin \"%1$s\" to home screen</string>
-    <string name="settings_pin_default_item">your first item</string>
-    <string name="settings_pin_hint_enabled">Adds a separate icon that launches it directly, next to Not App</string>
-    <string name="settings_pin_hint_disabled">Configure your first item to enable this</string>
     <string name="settings_share">Share</string>
     <string name="settings_share_text">Check out Not App: %1$s</string>
     <string name="settings_rate_app">Rate app</string>
@@ -134,6 +130,7 @@
          the Quick Settings tile launches, which is independent of the order. -->
     <string name="config_main_marker">Main item, opened by a plain tap</string>
     <string name="config_tile_marker">Launched by the shade tile</string>
+    <string name="config_pin_action">Pin to home screen</string>
     <string name="config_main_marker_hint">A plain tap launches this one: on its own in Direct, with the list on top in Mix.</string>
     <string name="config_tile_marker_on">The Quick Settings tile launches this one.</string>
     <string name="config_tile_marker_off">The Quick Settings tile opens the list again.</string>

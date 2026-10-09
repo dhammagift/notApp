@@ -231,3 +231,46 @@ jobs:
             echo ""
             echo "\`gift.dhamma.noapp\` is on **closed testing (alpha)**. Production needs a promote in the Play Console."
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # The signed APKs from the build above, installed on a clean emulator and launched the way a user
+  # first does: tap the icon, wait, tap again. Catches "crashes on first start" with a real logcat
+  # instead of guesses. Test builds only (a release has no artifact here and needs no emulator).
+  first-launch:
+    needs: build
+    if: github.ref_type != 'tag' && (github.event_name != 'workflow_dispatch' || github.event.inputs.version == '')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [29, 34, 35]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get the APKs from the build
+        uses: actions/download-artifact@v4
+        with:
+          name: NotApp-${{ github.sha }}${{ inputs.alwaysAskForReview && '-TEST-always-review' || '' }}
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: First launch on API ${{ matrix.api }}
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: bash .github/scripts/first-launch.sh
+
+      - name: Upload logcat and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: first-launch-api${{ matrix.api }}
+          path: out/
+          retention-days: 14

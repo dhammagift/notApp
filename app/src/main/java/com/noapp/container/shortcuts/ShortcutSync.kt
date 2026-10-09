@@ -96,7 +96,7 @@ object ShortcutSync {
                 }
                 // Full replace each time: always under budget by construction, no drift bookkeeping needed.
                 ShortcutManagerCompat.setDynamicShortcuts(appContext, shortcuts)
-                // Home-screen pins (Settings) aren't covered by the replace above; refresh them too,
+                // Home-screen pins (the list row's pin) aren't covered by the replace above; refresh them too,
                 // so ones made before launchToken existed pick it up.
                 val pinned = ShortcutManagerCompat.getShortcuts(appContext, ShortcutManagerCompat.FLAG_MATCH_PINNED)
                     .mapNotNull { info ->
@@ -121,7 +121,7 @@ object ShortcutSync {
             )
             .build()
 
-    /** Exposed (not just used internally by [sync]) so Settings can pin a single slot as its own home-screen icon. */
+    /** Exposed (not just used internally by [sync]) so the list row's pin can put a single slot on the home screen as its own icon. */
     internal fun shortcutFor(context: Context, slot: ShortcutSlot, component: ComponentName): ShortcutInfoCompat {
         val intent = Intent(context, MainActivity::class.java)
             .setAction(Intent.ACTION_VIEW)

@@ -21,10 +21,6 @@
     <string name="settings_show_recent_apps_hint">Если вы хотите видеть недавние приложения отдельно в списке, то мне нужно будет разрешение usage access.</string>
     <string name="settings_usage_access_dialog_title">Доступ к использованию</string>
     <string name="settings_usage_access_dialog_text">Чтобы показывать ряд недавно использованных приложений, мне нужно разрешение \"Доступ к использованию\". Откроются системные настройки — найдите там Not App и включите его.</string>
-    <string name="settings_pin_title">Закрепить \"%1$s\" на рабочем столе</string>
-    <string name="settings_pin_default_item">первый ярлык</string>
-    <string name="settings_pin_hint_enabled">Добавляет отдельную иконку рядом с Not App, которая сразу запускает этот ярлык</string>
-    <string name="settings_pin_hint_disabled">Настройте первый ярлык, чтобы включить эту опцию</string>
     <string name="settings_share">Поделиться</string>
     <string name="settings_share_text">Посмотри Not App: %1$s</string>
     <string name="settings_rate_app">Оценить приложение</string>
@@ -132,6 +128,7 @@
          запускает плитка в шторке; на порядок она не влияет. -->
     <string name="config_main_marker">Главный пункт, открывается обычным тапом</string>
     <string name="config_tile_marker">Запускается плиткой в шторке</string>
+    <string name="config_pin_action">Закрепить на рабочем столе</string>
     <string name="config_main_marker_hint">Обычный тап запускает этот пункт: в Direct — только его, в Mix — его и список поверх.</string>
     <string name="config_tile_marker_on">Этот пункт запускает плитка в шторке.</string>
     <string name="config_tile_marker_off">Плитка снова открывает список.</string>

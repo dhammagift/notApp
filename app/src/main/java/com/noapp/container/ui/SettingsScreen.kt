@@ -85,7 +85,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.content.pm.ShortcutManagerCompat
 import com.noapp.container.DebugLog
 import com.noapp.container.R
 import com.noapp.container.data.ConfigStore
@@ -93,12 +92,10 @@ import com.noapp.container.icon.DownsampledImage
 import com.noapp.container.icon.ICON_VARIANTS
 import com.noapp.container.icon.IconVariant
 import com.noapp.container.data.ReviewStore
-import com.noapp.container.icon.enabledLauncherComponent
 import com.noapp.container.model.AppConfig
 import com.noapp.container.model.AppTheme
 import com.noapp.container.recents.RecentApps
 import com.noapp.container.shortcuts.QuickPickPeekOverlayService
-import com.noapp.container.shortcuts.ShortcutSync
 
 private const val GITHUB_URL = "https://github.com/dhammagift/notApp"
 private const val GITHUB_RELEASES_URL = "$GITHUB_URL/releases/latest"
@@ -381,7 +378,6 @@ fun SettingsScreen(
                 )
                 HorizontalDivider()
             }
-            val firstSlot = config.slots.getOrNull(0)?.takeIf { it.isConfigured }
             // All three rows below stay visible in every mode (not just the mode they affect) so
             // Settings doesn't change shape as you switch modes — each one's own copy says which
             // mode(s) it works in instead.
@@ -512,35 +508,6 @@ fun SettingsScreen(
                 }
                 PeekBubblePreview(size = sizeDraft, alpha = alphaDraft, dockPeek = dockPeekDraft, modifier = Modifier.padding(start = 12.dp))
             }
-            HorizontalDivider()
-            val pinDefaultItem = stringResource(R.string.settings_pin_default_item)
-            ListItem(
-                headlineContent = {
-                    Text(
-                        stringResource(
-                            R.string.settings_pin_title,
-                            firstSlot?.label?.ifBlank { pinDefaultItem } ?: pinDefaultItem
-                        )
-                    )
-                },
-                supportingContent = {
-                    Text(
-                        stringResource(
-                            if (firstSlot != null) R.string.settings_pin_hint_enabled
-                            else R.string.settings_pin_hint_disabled
-                        )
-                    )
-                },
-                modifier = Modifier.clickable(enabled = firstSlot != null) {
-                    val slot = firstSlot ?: return@clickable
-                    if (ShortcutManagerCompat.isRequestPinShortcutSupported(context)) {
-                        val component = enabledLauncherComponent(context)
-                        ShortcutManagerCompat.requestPinShortcut(context, ShortcutSync.shortcutFor(context, slot, component), null)
-                    } else {
-                        Toast.makeText(context, context.getString(R.string.toast_pin_unsupported), Toast.LENGTH_SHORT).show()
-                    }
-                }
-            )
             HorizontalDivider()
             ListItem(
                 headlineContent = { Text(stringResource(R.string.settings_rate_app)) },

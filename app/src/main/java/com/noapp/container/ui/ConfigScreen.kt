@@ -126,6 +126,8 @@ import com.noapp.container.model.AppConfig
 import com.noapp.container.model.AppMode
 import com.noapp.container.model.ShortcutSlot
 import com.noapp.container.model.SlotType
+import com.noapp.container.shortcuts.ShortcutSync
+import androidx.core.content.pm.ShortcutManagerCompat
 
 private const val MAX_FILL_SELECTION = 20
 
@@ -647,6 +649,12 @@ fun ConfigScreen(
                     )
                     SwipeToDismissBox(
                         state = dismissState,
+                        // On the item's root, not on the ListItem inside: LazyColumn only reads
+                        // animateItem/zIndex from the item's top-level layout, so nested inside they
+                        // did nothing and neighbours jumped instead of sliding aside during a drag.
+                        modifier = Modifier
+                            .zIndex(if (isDragging || lift > 0f) 1f else 0f)
+                            .then(if (isDragging) Modifier else Modifier.animateItem()),
                         backgroundContent = {
                             // Only while a swipe is under way: a dragged row slides over this too,
                             // and the red must not show through the gap it leaves.
@@ -738,6 +746,28 @@ fun ConfigScreen(
                                         }
                                 )
                                 Spacer(Modifier.width(14.dp))
+                                // Pin: one more home-screen icon for this item, as many times and for as
+                                // many items as the user likes — the launcher shows its own confirm.
+                                Icon(
+                                    painterResource(R.drawable.ic_marker_pin),
+                                    contentDescription = stringResource(R.string.config_pin_action),
+                                    tint = inactiveTint,
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clickable(enabled = slot.isConfigured) {
+                                            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                                            if (ShortcutManagerCompat.isRequestPinShortcutSupported(context)) {
+                                                ShortcutManagerCompat.requestPinShortcut(
+                                                    context,
+                                                    ShortcutSync.shortcutFor(context, slot, enabledLauncherComponent(context)),
+                                                    null
+                                                )
+                                            } else {
+                                                scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.toast_pin_unsupported)) }
+                                            }
+                                        }
+                                )
+                                Spacer(Modifier.width(14.dp))
                                 Icon(
                                     Icons.Default.Close,
                                     contentDescription = stringResource(R.string.common_close),
@@ -770,8 +800,6 @@ fun ConfigScreen(
                         },
                         modifier = Modifier
                             .riseInOnAppear(index)
-                            .zIndex(if (isDragging || lift > 0f) 1f else 0f)
-                            .then(if (isDragging) Modifier else Modifier.animateItem())
                             .graphicsLayer {
                                 translationY = dragOffset
                                 scaleX = 1f + 0.03f * lift
