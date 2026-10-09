@@ -113,6 +113,7 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.zIndex
 import com.noapp.container.R
 import com.noapp.container.icon.AndroidIcon
@@ -669,11 +670,15 @@ fun ConfigScreen(
                         }
                     ) {
                         ListItem(
-                            headlineContent = { Text(slot.label.ifBlank { positionLabel }) },
+                            // One line each: five controls on the right leave little room on a narrow
+                            // phone, and wrapping turned a row into a five-line column of words.
+                            headlineContent = { Text(slot.label.ifBlank { positionLabel }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                             supportingContent = {
                                 Text(
                                     "${slot.type?.displayName() ?: notConfiguredLabel} · $positionLabel",
-                                    style = MaterialTheme.typography.bodySmall
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             },
                             leadingContent = { SlotIcon(slot, size = 40.dp) },
@@ -722,7 +727,7 @@ fun ConfigScreen(
                                         }
                                     }
                                 )
-                                Spacer(Modifier.width(14.dp))
+                                Spacer(Modifier.width(10.dp))
                                 Icon(
                                     painterResource(R.drawable.ic_tile),
                                     contentDescription = stringResource(R.string.config_tile_marker),
@@ -745,7 +750,7 @@ fun ConfigScreen(
                                             }
                                         }
                                 )
-                                Spacer(Modifier.width(14.dp))
+                                Spacer(Modifier.width(10.dp))
                                 // Pin: one more home-screen icon for this item, as many times and for as
                                 // many items as the user likes — the launcher shows its own confirm.
                                 Icon(
@@ -767,7 +772,7 @@ fun ConfigScreen(
                                             }
                                         }
                                 )
-                                Spacer(Modifier.width(14.dp))
+                                Spacer(Modifier.width(10.dp))
                                 Icon(
                                     Icons.Default.Close,
                                     contentDescription = stringResource(R.string.common_close),
@@ -790,7 +795,7 @@ fun ConfigScreen(
                                         }
                                     }
                                 )
-                                Spacer(Modifier.width(16.dp))
+                                Spacer(Modifier.width(12.dp))
                                 Icon(
                                     Icons.Default.Menu,
                                     contentDescription = reorderDesc,
