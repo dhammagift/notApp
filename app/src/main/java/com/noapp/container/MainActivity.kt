@@ -92,10 +92,17 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        if (reconcileLauncherIconOrRestart(intent, initialConfig)) return
-        if (dispatchIfShortcut(intent, initialConfig)) {
-            DebugLog.log(this, TAG, "dispatchIfShortcut handled it, finishing")
-            return
+        // savedInstanceState != null: the same Activity is being recreated — a turn of the screen,
+        // a foldable opened or closed (Razr), a theme or language change. getIntent() is still the
+        // original launcher tap, and running it again would dispatch it a second time: the list was
+        // swapped for the quick sheet (List/Mix) or the main app (Direct) mid-use, or an icon change
+        // tore the task down. Only a real launch dispatches.
+        if (savedInstanceState == null) {
+            if (reconcileLauncherIconOrRestart(intent, initialConfig)) return
+            if (dispatchIfShortcut(intent, initialConfig)) {
+                DebugLog.log(this, TAG, "dispatchIfShortcut handled it, finishing")
+                return
+            }
         }
 
         // Self-heals installs whose shortcuts were published before ShortcutSync started
