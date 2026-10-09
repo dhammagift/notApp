@@ -44,7 +44,8 @@ for pair in "NotApp.apk:gift.dhamma.noapp" "NotApp-git.apk:gift.dhamma.noapp.git
     adb shell input keyevent KEYCODE_HOME
     sleep 2
   done
-  # A turn of the screen (or, on a foldable, opening/closing it) recreates the Activity. With items
+  # A new screen size - a foldable opened or closed - recreates the Activity. (A turn doesn't do it
+  # here: this translucent Activity takes its orientation from the launcher behind it.) With items
   # configured, the list must still be there afterwards - not the quick sheet, not another app.
   adb uninstall "$pkg" >/dev/null 2>&1
   adb install "$apk" >/dev/null
@@ -55,12 +56,12 @@ for pair in "NotApp.apk:gift.dhamma.noapp" "NotApp-git.apk:gift.dhamma.noapp.git
   if tap text '^Fill$' && tap text "$APPS" 0 && tap text "$APPS" 1 && tap text '^Fill [0-9]+ slots?$'; then
     adb exec-out screencap -p > "out/$pkg-rotate-before.png"
     echo "before turn: $(top)"
-    adb shell settings put system user_rotation 1
+    adb shell wm size 1080x1200   # what a Razr does when it opens or closes
     sleep 6
     adb exec-out screencap -p > "out/$pkg-rotate-after.png"
     after=$(top); echo "after turn: $after"
-    echo "$after" | grep -q "com.noapp.container.IconDefault\|MainActivity" || { echo "::error::$pkg: turning the screen left the item list ($after)"; fail=1; }
-    adb shell settings put system user_rotation 0
+    echo "$after" | grep -q "com.noapp.container.IconDefault\|MainActivity" || { echo "::error::$pkg: a screen size change left the item list ($after)"; fail=1; }
+    adb shell wm size reset
   else
     echo "::warning::$pkg: could not fill items, turn check skipped"
   fi
