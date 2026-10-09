@@ -19,10 +19,13 @@ if len(hits) > n:
     print((x1 + x2) // 2, (y1 + y2) // 2)
 PY
 )
-  [ -n "$xy" ] || { echo "nothing to tap: $1 ~ $2 [$3]"; return 1; }
+  [ -n "$xy" ] || { echo "nothing to tap: $1 ~ $2 [${3:-0}]"; cp /tmp/ui.xml "out/notap-$(date +%s).xml"; return 1; }
   adb shell input tap $xy
   sleep 2
 }
+
+# Apps every emulator image has; the Fill dialog's rows are plain clickable rows, not checkboxes.
+APPS='^(Calendar|Camera|Clock|Contacts|Files|Messages|Phone|Settings)$'
 
 top() { adb shell dumpsys activity activities | grep -m1 -E "topResumedActivity|mResumedActivity"; }
 for pair in "NotApp.apk:gift.dhamma.noapp" "NotApp-git.apk:gift.dhamma.noapp.git"; do
@@ -49,7 +52,7 @@ for pair in "NotApp.apk:gift.dhamma.noapp" "NotApp-git.apk:gift.dhamma.noapp.git
   adb shell settings put system user_rotation 0
   adb shell monkey -p "$pkg" -c android.intent.category.LAUNCHER 1 >/dev/null
   sleep 6
-  if tap text '^Fill$' && tap checkable true 0 && tap checkable true 1 && tap text '^Fill [0-9]+ slots?$'; then
+  if tap text '^Fill$' && tap text "$APPS" 0 && tap text "$APPS" 1 && tap text '^Fill [0-9]+ slots?$'; then
     adb exec-out screencap -p > "out/$pkg-rotate-before.png"
     echo "before turn: $(top)"
     adb shell settings put system user_rotation 1
