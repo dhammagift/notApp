@@ -105,4 +105,19 @@ curl -sSL -o old-git.apk https://github.com/dhammagift/notApp/releases/download/
   && record_tap old-git.apk gift.dhamma.noapp.git '^Not App Git$' tap-v0.6.4-git
 record_tap NotApp-git.apk gift.dhamma.noapp.git '^Not App Git$' tap-this-build-git
 
+# What "Continue" in the permission dialogs opens (ui/SettingsIntents.kt), looked at by eye: with the package,
+# "Usage access" should be Not App's own page; "Display over other apps" is the list of all apps since Android 11.
+# The third is a probe, not what the app does: the app's info page asked to flash its "Display over other apps" row.
+adb install NotApp.apk >/dev/null
+for t in "usage android.settings.USAGE_ACCESS_SETTINGS gift.dhamma.noapp" \
+         "overlay android.settings.action.MANAGE_OVERLAY_PERMISSION gift.dhamma.noapp" \
+         "appinfo android.settings.APPLICATION_DETAILS_SETTINGS system_alert_window"; do
+  set -- $t
+  adb shell am start -a "$2" -d package:gift.dhamma.noapp --es ":settings:fragment_args_key" "$3" > "out/settings-$1.txt" 2>&1
+  sleep 4
+  adb exec-out screencap -p > "out/settings-$1.png"
+  top >> "out/settings-$1.txt"
+  adb shell input keyevent KEYCODE_HOME; sleep 1
+done
+
 exit $fail

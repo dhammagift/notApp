@@ -6,12 +6,13 @@ import android.net.Uri
 import android.os.Bundle
 
 /**
- * A system settings screen for one of our permissions, scrolled to this app with its row highlighted.
+ * A system settings screen for one of our permissions, as close to this app's own switch as Android lets us get.
  *
- * Since Android 11 "Display over other apps" always opens as the list of all apps (the package in the
- * URI is ignored), and "Usage access" was always a list: the person had to find the app in it. The two
- * extras are the keys the Settings app's own search uses to land on an entry; undocumented, so a settings
- * app that does not know them shows the plain list, as before.
+ * "Usage access" with the package opens this app's own page. "Display over other apps" has ignored the package
+ * since Android 11 and opens the list of all apps. The two extras are the keys the Settings app's own search uses
+ * to scroll to an entry and flash it: they work on screens built of preferences (the "Do Not Disturb access" list),
+ * but AOSP's lists of apps (ManageApplications, 11-15) do not read them, so there they only help where a
+ * manufacturer's Settings does.
  */
 internal fun appSettingsIntent(context: Context, action: String, withPackageUri: Boolean = true): Intent {
     val pkg = context.packageName

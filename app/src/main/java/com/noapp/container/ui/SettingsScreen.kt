@@ -613,7 +613,14 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showUsageAccessExplainer = false
-                    usageAccessSettingsLauncher.launch(appSettingsIntent(context, AndroidSettings.ACTION_USAGE_ACCESS_SETTINGS, withPackageUri = false))
+                    // With the package the Settings app opens Not App's own "Usage access" page, one switch and no
+                    // list to search (AOSP: Settings$AppUsageAccessSettingsActivity). A settings app that has no
+                    // such page refuses the intent, and the list of all apps opens, as before.
+                    runCatching {
+                        usageAccessSettingsLauncher.launch(appSettingsIntent(context, AndroidSettings.ACTION_USAGE_ACCESS_SETTINGS))
+                    }.onFailure {
+                        usageAccessSettingsLauncher.launch(appSettingsIntent(context, AndroidSettings.ACTION_USAGE_ACCESS_SETTINGS, withPackageUri = false))
+                    }
                 }) { Text(stringResource(R.string.settings_continue)) }
             },
             dismissButton = {
