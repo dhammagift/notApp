@@ -184,11 +184,11 @@ jobs:
             NotApp.aab
           # Prepended to the generated notes on every release, so the two files never look like a mix-up.
           body: |
-            **Two files, on purpose:**
-            - `NotApp-git.apk` — **Not App Git** (`gift.dhamma.noapp.git`), install this one. It sits next to the Google Play app instead of replacing it, with its own settings and list.
-            - `NotApp.aab` — the bundle that goes to Google Play (`gift.dhamma.noapp`). Not for installing on a phone.
+            Thanks for stopping by! Two files here, on purpose:
 
-            The different name and package are deliberate, not a bug.
+            - **`NotApp-git.apk`** — install this one. It is called *Not App Git* and has its own package, so it lives next to the Google Play version instead of replacing it: you can keep both, each with its own list.
+            - **`NotApp.aab`** — exactly what goes to Google Play, here for transparency (e.g. to compare it with the source). Phones don't install it.
+
           draft: false
           prerelease: false
           generate_release_notes: true
