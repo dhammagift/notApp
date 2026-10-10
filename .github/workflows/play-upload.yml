@@ -1,0 +1,39 @@
+name: Upload a release to Play
+
+# Sends the NotApp.aab already attached to a GitHub release to Google Play - the same file, no
+# rebuild. For a release that went to GitHub only (play unticked) and should reach Play later.
+# Play refuses a versionCode it has already seen, so each release can go up once.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag, e.g. v0.6.5'
+        required: true
+        type: string
+      track:
+        description: 'Play track'
+        required: false
+        type: choice
+        default: alpha
+        options: [alpha, beta, production]
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the release's bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "${{ inputs.tag }}" --repo "${{ github.repository }}" --pattern NotApp.aab
+
+      - name: Upload to Google Play
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: gift.dhamma.noapp
+          releaseFiles: NotApp.aab
+          track: ${{ inputs.track }}
+          status: completed
+
+      - name: Say what went to Play
+        run: echo "### ${{ inputs.tag }} is on Play (${{ inputs.track }})" >> "$GITHUB_STEP_SUMMARY"

@@ -175,10 +175,13 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
-          # GitHub carries the copy with its own package (NotApp-git.apk); the plain NotApp.apk / .aab are Google Play's package and
-          # go only to the store, so nobody installs the Play package over a Play install from here.
+          # GitHub carries the copy with its own package (NotApp-git.apk) for people to install; the
+          # Play-package APK stays off, so nobody installs it over a Play install from here. The
+          # bundle (NotApp.aab) is attached so play-upload.yml can send this very release to Play
+          # later, without a rebuild; a bundle is not something a phone installs.
           files: |
             NotApp-git.apk
+            NotApp.aab
           draft: false
           prerelease: false
           generate_release_notes: true
