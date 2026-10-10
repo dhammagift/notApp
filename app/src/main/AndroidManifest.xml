@@ -29,7 +29,12 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:localeConfig="@xml/locales_config"
-        android:theme="@style/Theme.NoApp">
+        android:theme="@style/Theme.NoApp.Main">
+        <!-- Theme.NoApp.Main (translucent) here, not just on MainActivity: a launcher tap comes in
+             through an activity-alias below, and the system can take the starting-window theme from
+             the application rather than from the alias's target. With the opaque Theme.NoApp that
+             meant a system splash on every icon tap (windowDisablePreview is ignored for launches
+             from the launcher). Every activity still names its own theme. -->
 
         <!-- MainActivity is never itself a launcher entry point and its own component is
              NEVER enabled/disabled (see icon/AppIconSwitcher.kt) — GearOverlayService,

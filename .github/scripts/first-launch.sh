@@ -86,4 +86,23 @@ for pair in "NotApp.apk:gift.dhamma.noapp" "NotApp-git.apk:gift.dhamma.noapp.git
     echo "::error::$pkg crashed or hung on first launch, see out/$pkg-problems.txt"; fail=1
   fi
 done
+# A real tap on the icon in the launcher, recorded - the only kind of launch that can bring the
+# system splash screen (monkey / am start never show it). The released v0.6.4 is recorded too,
+# so the two videos show before and after. Frames are looked at by eye.
+record_tap() {  # apk pkg label out
+  adb uninstall "$2" >/dev/null 2>&1; adb install "$1" >/dev/null || return
+  adb shell input keyevent KEYCODE_HOME; sleep 2
+  adb shell input swipe 540 1800 540 300 300; sleep 2
+  adb shell input text "Not"; sleep 3
+  adb shell screenrecord --time-limit 6 /sdcard/tap.mp4 & rec=$!
+  sleep 1
+  tap text "$3" 0 || tap content-desc "$3" 0
+  wait $rec; adb pull /sdcard/tap.mp4 "out/$4.mp4" >/dev/null 2>&1
+  adb shell input keyevent KEYCODE_HOME; sleep 1
+  adb uninstall "$2" >/dev/null 2>&1
+}
+curl -sSL -o old-git.apk https://github.com/dhammagift/notApp/releases/download/v0.6.4/NotApp-git.apk \
+  && record_tap old-git.apk gift.dhamma.noapp.git '^Not App Git$' tap-v0.6.4-git
+record_tap NotApp-git.apk gift.dhamma.noapp.git '^Not App Git$' tap-this-build-git
+
 exit $fail
