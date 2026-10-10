@@ -27,10 +27,6 @@ Builds:
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v\d+\.\d+\.\d+$
-# versionCode is computed in build.gradle.kts (major*10000 + minor*100 + patch), so it is derived
-# from the versionName here instead of read from the file.
-UpdateCheckData: app/build.gradle.kts|val appVersion = "(\d+)\.(\d+)\.(\d+)"|app/build.gradle.kts|val appVersion = "(.*)"
-VercodeOperation:
-  - '%c'
+UpdateCheckData: app/build.gradle.kts|val appVersionCode = (\d+)|app/build.gradle.kts|val appVersion = "(.*)"
 CurrentVersion: 0.6.6
 CurrentVersionCode: 606

@@ -42,15 +42,18 @@ android {
         applicationId = "gift.dhamma.noapp"
         minSdk = 24
         targetSdk = 36
-        // The only version to edit. versionName is what people see; versionCode is Play's
-        // internal ordering number, which must grow with every upload — derived here so it
-        // can't be forgotten or collide: major*10000 + minor*100 + patch (0.5.1 -> 501).
+        // The version to edit, both lines together. versionName is what people see; versionCode is
+        // Play's internal ordering number, which must grow with every upload:
+        // major*10000 + minor*100 + patch (0.5.1 -> 501). Written out as a number because F-Droid
+        // reads it from this line; the build fails if the two disagree.
         val appVersion = "0.6.5"
+        val appVersionCode = 605
         versionName = appVersion
         // A build carrying the switch says so in its version name (Settings shows it), so it can never
         // be mistaken for a normal one.
         if (testBuildTag != null) versionNameSuffix = "-$testBuildTag" + if (alwaysAskForReview) "-review-test" else ""
         val baseVersionCode = appVersion.split(".").map { it.toInt() }.let { (major, minor, patch) -> major * 10000 + minor * 100 + patch }
+        require(appVersionCode == baseVersionCode) { "appVersionCode $appVersionCode does not match appVersion $appVersion ($baseVersionCode)" }
         versionCode = if (testBuildTag != null) baseVersionCode * 1000 + (buildNumber ?: 0) else baseVersionCode
         buildConfigField("boolean", "ALWAYS_ASK_FOR_REVIEW", alwaysAskForReview.toString())
     }
