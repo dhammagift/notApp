@@ -46,8 +46,8 @@ android {
         // Play's internal ordering number, which must grow with every upload:
         // major*10000 + minor*100 + patch (0.5.1 -> 501). Written out as a number because F-Droid
         // reads it from this line; the build fails if the two disagree.
-        val appVersion = "0.6.5"
-        val appVersionCode = 605
+        val appVersion = "0.6.6"
+        val appVersionCode = 606
         versionName = appVersion
         // A build carrying the switch says so in its version name (Settings shows it), so it can never
         // be mistaken for a normal one.
