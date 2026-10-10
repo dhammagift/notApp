@@ -28,6 +28,12 @@ require(!(alwaysAskForReview && testBuildTag == null)) {
     "alwaysAskForReview is a test-only switch and cannot be set on a release build"
 }
 
+// The open-store copy (F-Droid and the like): `-Pdroid` builds "Not App Droid" under its own package,
+// gift.dhamma.noapp.droid, so it installs next to the Play app and Not App Git. Everything about it is
+// this flag, src/droid and .github/workflows/droid.yml; drop those three to drop it. Without the flag
+// the app's name comes from src/name, as always.
+val droid = providers.gradleProperty("droid").isPresent
+
 android {
     namespace = "com.noapp.container"
     compileSdk = 36
@@ -48,6 +54,9 @@ android {
         versionCode = if (testBuildTag != null) baseVersionCode * 1000 + (buildNumber ?: 0) else baseVersionCode
         buildConfigField("boolean", "ALWAYS_ASK_FOR_REVIEW", alwaysAskForReview.toString())
     }
+
+    if (droid) defaultConfig.applicationIdSuffix = ".droid"
+    sourceSets["main"].res.srcDir(if (droid) "src/droid/res" else "src/name/res")
 
     buildTypes {
         release {

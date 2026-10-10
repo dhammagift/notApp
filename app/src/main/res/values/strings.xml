@@ -1,5 +1,4 @@
 <resources>
-    <string name="app_name">Not App</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_app_icon">App icon</string>

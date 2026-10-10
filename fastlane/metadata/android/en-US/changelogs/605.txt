@@ -1,0 +1,7 @@
+* A pin on every item: as many home-screen icons as you like, each opens its item even after you reorder the list; the pin lights up while the icon is on the home screen (the Settings entry is gone)
+* Not App in the text-selection menu of any app: select a word, pick an item, {{word}} items get it
+* No Not App splash on an icon tap
+* Dragging items is smooth: neighbours slide aside, nothing jumps or flickers
+* The list sheet's gear opens Settings as a circle growing out of the gear
+* Opening or closing a foldable no longer swaps the list for another screen
+* Long titles stay on one line

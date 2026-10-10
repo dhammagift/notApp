@@ -1,0 +1,45 @@
+name: Build Not App Droid
+
+# The open-store copy (F-Droid and the like): "Not App Droid", gift.dhamma.noapp.droid, built with
+# -Pdroid (see app/build.gradle.kts). Apart from build-release.yml on purpose: if open stores are
+# dropped, this file, the flag and src/droid go, and nothing else changes. F-Droid builds and
+# signs its own copy from source; this signed one is for trying the third copy on a phone.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+
+      - name: Build Not App Droid
+        run: chmod +x gradlew && ./gradlew app:assembleRelease -Pdroid -PtestBuildTag=${{ github.sha }} -PbuildNumber=${{ github.run_number }}
+
+      - name: Sign
+        uses: r0adkll/sign-android-release@v1
+        id: sign
+        with:
+          releaseDirectory: app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
+          alias: ${{ secrets.KEYSTORE_ALIAS }}
+          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "36.0.0"
+
+      - run: mv "${{ steps.sign.outputs.signedReleaseFile }}" NotApp-droid.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NotApp-droid-${{ github.sha }}
+          path: NotApp-droid.apk
+          retention-days: 14

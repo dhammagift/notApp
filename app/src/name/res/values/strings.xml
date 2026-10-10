@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The name under the icon. Kept apart so a -Pdroid build can swap in src/droid's (see app/build.gradle.kts);
+     the GitHub copy overrides it in src/gitRelease. -->
+<resources>
+    <string name="app_name">Not App</string>
+</resources>

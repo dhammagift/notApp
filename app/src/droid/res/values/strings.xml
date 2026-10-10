@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The open-store copy's name under the icon (-Pdroid, package gift.dhamma.noapp.droid): next to Not App and Not App Git. -->
+<resources>
+    <string name="app_name">Not App Droid</string>
+</resources>

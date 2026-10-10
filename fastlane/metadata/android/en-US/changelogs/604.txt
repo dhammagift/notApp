@@ -1,0 +1,1 @@
+* GitHub releases carry Not App Git, a copy under its own package and name that installs next to the Google Play app
