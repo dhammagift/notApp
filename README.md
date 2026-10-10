@@ -12,6 +12,9 @@ GitHub releases carry **Not App Git** (`gift.dhamma.noapp.git`): the same app un
 Google Play app (`gift.dhamma.noapp`), not over it, and keeps its own settings and shortcut list - handy for two setups on one phone.
 Use Settings → export / import to move a list from one to the other.
 
+So each release has two files, on purpose: `NotApp-git.apk` is Not App Git, the one to install from here; `NotApp.aab` is the
+bundle that goes to Google Play (a phone does not install it). Different name and package are a feature, not a mistake.
+
 ## What is Not App?
 
 Instead of cluttering your home screen with dozens of app shortcuts, **Not App** gives you one icon that does many things. It lives on your home screen alongside any launcher — no need to replace the one you love.
