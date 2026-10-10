@@ -438,8 +438,11 @@ class MainActivity : ComponentActivity() {
             return true
         }
 
+        // A home-screen icon from before shortcuts were named by their item, not refreshed since:
+        // still by position, which is what it shows until then. The sync ties it to that item.
         val explicitId = if (ownLaunch) intent.getIntExtra(EXTRA_SLOT_ID, -1) else -1
         if (explicitId >= 0) {
+            ShortcutSync.sync(this, config.mode, config.slots, config.useAllSlotsInDirectMode)
             config.slots.getOrNull(explicitId)?.let { ActionDispatcher.execute(this, it) }
             finishWithoutTransition()
             return true

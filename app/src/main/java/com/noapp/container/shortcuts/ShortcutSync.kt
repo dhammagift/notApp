@@ -15,14 +15,28 @@ import com.noapp.container.model.AppMode
 import com.noapp.container.model.ShortcutSlot
 import java.util.concurrent.Executors
 
+/** Position-based, from before every shortcut named its item; only old home-screen icons still carry it. */
 const val EXTRA_SLOT_ID = "extra_slot_id"
 const val EXTRA_OPEN_CONFIG = "extra_open_config"
 /** A home-screen pin names its item by what it opens (ShortcutSlot.targetKey), not by position. */
 const val EXTRA_PIN_TARGET = "extra_pin_target"
 private const val PIN_PREFIX = "pin:"
+private const val LEGACY_SLOT_PREFIX = "slot_"
 private const val EXTRA_LAUNCH_TOKEN = "extra_launch_token"
 private const val SHORTCUT_ICON_SIZE_PX = 108
 private const val CONFIGURE_SHORTCUT_ID = "configure"
+
+/**
+ * Which item a pinned shortcut stands for, as a ShortcutSlot.targetKey, or null if none. A pin:<key>
+ * id says it outright. A slot_<N> id is from versions that numbered the long-press shortcuts by
+ * position, which a launcher lets you drag out to the home screen: once refreshed it carries its
+ * item in [pinTarget]; until then it is the item at N, which is what it showed when last refreshed.
+ */
+internal fun pinnedKeyOf(id: String, pinTarget: String?, slots: List<ShortcutSlot>): String? = when {
+    id.startsWith(PIN_PREFIX) -> id.removePrefix(PIN_PREFIX)
+    pinTarget != null -> pinTarget
+    else -> id.removePrefix(LEGACY_SLOT_PREFIX).toIntOrNull()?.let { slots.getOrNull(it)?.targetKey }
+}
 
 /** See [ShortcutSync.launchToken]. */
 fun Intent.withLaunchToken(context: Context): Intent = putExtra(EXTRA_LAUNCH_TOKEN, ShortcutSync.launchToken(context))
@@ -87,31 +101,28 @@ object ShortcutSync {
                         val auxSlots = snapshot.filter { it.id != 0 && it.isConfigured }
                         buildList {
                             if (mainConfigured && !useAllSlotsInDirectMode && budget >= 1) add(configureShortcut(appContext, component))
-                            addAll(auxSlots.take((budget - size).coerceAtLeast(0)).map { shortcutFor(appContext, it, component) })
+                            addAll(auxSlots.take((budget - size).coerceAtLeast(0)).map { pinShortcutFor(appContext, it, component) })
                         }
                     }
                     AppMode.LIST -> {
-                        snapshot.filter { it.isConfigured }.take(budget).map { shortcutFor(appContext, it, component) }
+                        snapshot.filter { it.isConfigured }.take(budget).map { pinShortcutFor(appContext, it, component) }
                     }
                     AppMode.MIX -> {
-                        snapshot.filter { it.id != 0 && it.isConfigured }.take(budget).map { shortcutFor(appContext, it, component) }
+                        snapshot.filter { it.id != 0 && it.isConfigured }.take(budget).map { pinShortcutFor(appContext, it, component) }
                     }
                 }
                 // Full replace each time: always under budget by construction, no drift bookkeeping needed.
-                ShortcutManagerCompat.setDynamicShortcuts(appContext, shortcuts)
-                // Home-screen pins (the list row's pin) aren't covered by the replace above; refresh them too,
-                // so ones made before launchToken existed pick it up.
+                // One shortcut per item: two rows opening the same thing would share an id.
+                ShortcutManagerCompat.setDynamicShortcuts(appContext, shortcuts.distinctBy { it.id })
+                // Home-screen icons (the list row's pin, or a long-press shortcut dragged out) aren't
+                // covered by the replace above; refresh each with its own item, wherever that sits now,
+                // and under its own id. An old position-numbered one is tied to its item here, once,
+                // so a later reorder can no longer turn it into another item.
                 val pinned = ShortcutManagerCompat.getShortcuts(appContext, ShortcutManagerCompat.FLAG_MATCH_PINNED)
                     .mapNotNull { info ->
-                        if (info.id.startsWith(PIN_PREFIX)) {
-                            val key = info.id.removePrefix(PIN_PREFIX)
-                            snapshot.firstOrNull { it.targetKey == key }?.let { pinShortcutFor(appContext, it, component) }
-                        } else {
-                            // Pins made before EXTRA_PIN_TARGET: still by position.
-                            info.id.removePrefix("slot_").toIntOrNull()
-                                ?.let { id -> snapshot.firstOrNull { it.id == id && it.isConfigured } }
-                                ?.let { shortcutFor(appContext, it, component) }
-                        }
+                        val key = pinnedKeyOf(info.id, info.intent.getStringExtra(EXTRA_PIN_TARGET), snapshot)
+                        snapshot.firstOrNull { key != null && it.targetKey == key }
+                            ?.let { build(appContext, it, component, info.id, Intent().putExtra(EXTRA_PIN_TARGET, key)) }
                     }
                 if (pinned.isNotEmpty()) ShortcutManagerCompat.updateShortcuts(appContext, pinned)
             }
@@ -130,13 +141,12 @@ object ShortcutSync {
             )
             .build()
 
-    private fun shortcutFor(context: Context, slot: ShortcutSlot, component: ComponentName): ShortcutInfoCompat =
-        build(context, slot, component, "slot_${slot.id}", Intent().putExtra(EXTRA_SLOT_ID, slot.id))
-
     /**
      * The list row's pin: its own home-screen icon for [slot]. Tied to what the item opens, not to
      * its position, so reordering the list never makes a pinned icon open a different item. Pinning
      * the same item twice is the same shortcut; the launcher decides whether to add another icon.
+     * The long-press shortcuts are this same shortcut too: a launcher lets you drag one out to the
+     * home screen, and while their id was the position, that icon became whatever item moved there.
      */
     fun pinShortcutFor(context: Context, slot: ShortcutSlot, component: ComponentName): ShortcutInfoCompat =
         build(context, slot, component, PIN_PREFIX + slot.targetKey, Intent().putExtra(EXTRA_PIN_TARGET, slot.targetKey))
@@ -144,8 +154,7 @@ object ShortcutSync {
     /** Items that have an icon of their own on the home screen right now, by targetKey. */
     fun pinnedTargets(context: Context, slots: List<ShortcutSlot>): Set<String> = runCatching {
         ShortcutManagerCompat.getShortcuts(context, ShortcutManagerCompat.FLAG_MATCH_PINNED).mapNotNull { info ->
-            if (info.id.startsWith(PIN_PREFIX)) info.id.removePrefix(PIN_PREFIX)
-            else info.id.removePrefix("slot_").toIntOrNull()?.let { slots.getOrNull(it)?.targetKey }
+            pinnedKeyOf(info.id, info.intent.getStringExtra(EXTRA_PIN_TARGET), slots)
         }.toSet()
     }.getOrDefault(emptySet())
 
