@@ -764,7 +764,7 @@ fun ConfigScreen(
                                             if (ShortcutManagerCompat.isRequestPinShortcutSupported(context)) {
                                                 ShortcutManagerCompat.requestPinShortcut(
                                                     context,
-                                                    ShortcutSync.shortcutFor(context, slot, enabledLauncherComponent(context)),
+                                                    ShortcutSync.pinShortcutFor(context, slot, enabledLauncherComponent(context)),
                                                     null
                                                 )
                                             } else {
@@ -806,7 +806,10 @@ fun ConfigScreen(
                         modifier = Modifier
                             .riseInOnAppear(index)
                             .graphicsLayer {
-                                translationY = dragOffset
+                                // Held: the raw offset, read here in the draw phase. Through the
+                                // animated value it arrived a frame late, so at each swap the row
+                                // jumped a whole row height for one frame. Released: it settles.
+                                translationY = if (isDragging) dragState.dragOffsetY else dragOffset
                                 scaleX = 1f + 0.03f * lift
                                 scaleY = 1f + 0.03f * lift
                                 shadowElevation = 12f * lift

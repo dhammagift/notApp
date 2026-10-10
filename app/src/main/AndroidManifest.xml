@@ -54,6 +54,16 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
+
+            <!-- Text-selection menu: select a word anywhere, "Not App", pick an item - same sheet as
+                 Share, so {{word}} items get the selection. MainActivity only forwards it to the
+                 sheet and finishes, so joining the caller's task (a result launch) leaves nothing
+                 of ours behind in it. -->
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
         </activity>
 
         <!-- Translucent popup for the LIST/MIX-mode plain tap and incoming shares — overlays

@@ -17,6 +17,9 @@ import java.util.concurrent.Executors
 
 const val EXTRA_SLOT_ID = "extra_slot_id"
 const val EXTRA_OPEN_CONFIG = "extra_open_config"
+/** A home-screen pin names its item by what it opens (ShortcutSlot.targetKey), not by position. */
+const val EXTRA_PIN_TARGET = "extra_pin_target"
+private const val PIN_PREFIX = "pin:"
 private const val EXTRA_LAUNCH_TOKEN = "extra_launch_token"
 private const val SHORTCUT_ICON_SIZE_PX = 108
 private const val CONFIGURE_SHORTCUT_ID = "configure"
@@ -100,9 +103,15 @@ object ShortcutSync {
                 // so ones made before launchToken existed pick it up.
                 val pinned = ShortcutManagerCompat.getShortcuts(appContext, ShortcutManagerCompat.FLAG_MATCH_PINNED)
                     .mapNotNull { info ->
-                        info.id.removePrefix("slot_").toIntOrNull()
-                            ?.let { id -> snapshot.firstOrNull { it.id == id && it.isConfigured } }
-                            ?.let { shortcutFor(appContext, it, component) }
+                        if (info.id.startsWith(PIN_PREFIX)) {
+                            val key = info.id.removePrefix(PIN_PREFIX)
+                            snapshot.firstOrNull { it.targetKey == key }?.let { pinShortcutFor(appContext, it, component) }
+                        } else {
+                            // Pins made before EXTRA_PIN_TARGET: still by position.
+                            info.id.removePrefix("slot_").toIntOrNull()
+                                ?.let { id -> snapshot.firstOrNull { it.id == id && it.isConfigured } }
+                                ?.let { shortcutFor(appContext, it, component) }
+                        }
                     }
                 if (pinned.isNotEmpty()) ShortcutManagerCompat.updateShortcuts(appContext, pinned)
             }
@@ -121,14 +130,24 @@ object ShortcutSync {
             )
             .build()
 
-    /** Exposed (not just used internally by [sync]) so the list row's pin can put a single slot on the home screen as its own icon. */
-    internal fun shortcutFor(context: Context, slot: ShortcutSlot, component: ComponentName): ShortcutInfoCompat {
+    private fun shortcutFor(context: Context, slot: ShortcutSlot, component: ComponentName): ShortcutInfoCompat =
+        build(context, slot, component, "slot_${slot.id}", Intent().putExtra(EXTRA_SLOT_ID, slot.id))
+
+    /**
+     * The list row's pin: its own home-screen icon for [slot]. Tied to what the item opens, not to
+     * its position, so reordering the list never makes a pinned icon open a different item. Pinning
+     * the same item twice is the same shortcut; the launcher decides whether to add another icon.
+     */
+    fun pinShortcutFor(context: Context, slot: ShortcutSlot, component: ComponentName): ShortcutInfoCompat =
+        build(context, slot, component, PIN_PREFIX + slot.targetKey, Intent().putExtra(EXTRA_PIN_TARGET, slot.targetKey))
+
+    private fun build(context: Context, slot: ShortcutSlot, component: ComponentName, id: String, extras: Intent): ShortcutInfoCompat {
         val intent = Intent(context, MainActivity::class.java)
             .setAction(Intent.ACTION_VIEW)
-            .putExtra(EXTRA_SLOT_ID, slot.id)
+            .putExtras(extras)
             .withLaunchToken(context)
 
-        return ShortcutInfoCompat.Builder(context, "slot_${slot.id}")
+        return ShortcutInfoCompat.Builder(context, id)
             .setActivity(component)
             .setShortLabel(slot.label.ifBlank { context.getString(R.string.common_item_n, slot.id + 1) })
             .setIcon(IconCompat.createWithBitmap(iconBitmapFor(context, slot, SHORTCUT_ICON_SIZE_PX)))

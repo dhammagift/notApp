@@ -9,7 +9,11 @@ import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.fadeIn
@@ -36,6 +40,7 @@ import com.noapp.container.model.SlotType
 import com.noapp.container.recents.RecentApps
 import com.noapp.container.shortcuts.ActionDispatcher
 import com.noapp.container.shortcuts.EXTRA_OPEN_CONFIG
+import com.noapp.container.shortcuts.EXTRA_PIN_TARGET
 import com.noapp.container.shortcuts.EXTRA_SLOT_ID
 import com.noapp.container.shortcuts.GearOverlayService
 import com.noapp.container.shortcuts.QuickPickPeekOverlayService
@@ -72,6 +77,9 @@ class MainActivity : ComponentActivity() {
     // back to Config below without needing a reference into the running composition.
     private var screen: Screen by mutableStateOf(Screen.Config)
     private var hintSeq = 0
+    // Bumped when the list sheet's gear brings us up: that arrival has no system window animation
+    // (QuickPickActivity.openConfigure), so the content fades and settles in on its own instead.
+    private var entranceSeq by mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -112,6 +120,7 @@ class MainActivity : ComponentActivity() {
         // it costs the launch nothing.
         ShortcutSync.sync(this, initialConfig.mode, initialConfig.slots, initialConfig.useAllSlotsInDirectMode)
         DebugLog.log(this, TAG, "showing Config screen")
+        if (savedInstanceState == null && intent.getBooleanExtra(EXTRA_OPEN_CONFIG, false)) entranceSeq = 1
 
         setContent {
             var mode by remember { mutableStateOf(initialConfig.mode) }
@@ -153,7 +162,22 @@ class MainActivity : ComponentActivity() {
             NoAppTheme(theme) {
                 // The window itself is translucent (see Theme.NoApp.Main in themes.xml) — this is
                 // what makes these screens opaque.
-                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                val entrance = remember { Animatable(if (entranceSeq > 0) 0f else 1f) }
+                LaunchedEffect(entranceSeq) {
+                    if (entranceSeq > 0) {
+                        entrance.snapTo(0f)
+                        entrance.animateTo(1f, tween(ENTRANCE_MS, easing = FastOutSlowInEasing))
+                    }
+                }
+                Surface(
+                    Modifier.fillMaxSize().graphicsLayer {
+                        alpha = entrance.value
+                        val scale = 0.96f + 0.04f * entrance.value
+                        scaleX = scale
+                        scaleY = scale
+                    },
+                    color = MaterialTheme.colorScheme.background
+                ) {
                     NoAppRoot(
                         mode = mode,
                         slots = slots,
@@ -271,6 +295,7 @@ class MainActivity : ComponentActivity() {
             // other screen. Navigate to Config so the user actually lands somewhere they can
             // add a shortcut, instead of just resurfacing whatever screen was left open.
             screen = Screen.Config
+            entranceSeq++
         } else {
             dispatchIfShortcut(intent, config)
             // A repeat share/tap while the UI is already open is rare enough to just leave the
@@ -340,7 +365,7 @@ class MainActivity : ComponentActivity() {
         // carrying them is another app, or a shortcut from before the token: re-publish ours (which
         // repairs the latter) and treat it as a plain tap.
         val ownLaunch = ShortcutSync.isOwnLaunch(this, intent)
-        if (!ownLaunch && (intent.hasExtra(EXTRA_TILE_TARGET) || intent.hasExtra(EXTRA_SLOT_ID))) {
+        if (!ownLaunch && (intent.hasExtra(EXTRA_TILE_TARGET) || intent.hasExtra(EXTRA_SLOT_ID) || intent.hasExtra(EXTRA_PIN_TARGET))) {
             ShortcutSync.sync(this, config.mode, config.slots, config.useAllSlotsInDirectMode)
         }
 
@@ -364,6 +389,15 @@ class MainActivity : ComponentActivity() {
                 finishWithoutTransition()
                 return true
             }
+        }
+
+        // A home-screen pin: the item it was made for, wherever it sits in the list now. One that was
+        // removed since falls through to an ordinary tap.
+        val pinTarget = if (ownLaunch) intent.getStringExtra(EXTRA_PIN_TARGET) else null
+        config.slots.firstOrNull { pinTarget != null && it.targetKey == pinTarget }?.let {
+            ActionDispatcher.execute(this, it)
+            finishWithoutTransition()
+            return true
         }
 
         val explicitId = if (ownLaunch) intent.getIntExtra(EXTRA_SLOT_ID, -1) else -1
@@ -400,9 +434,11 @@ class MainActivity : ComponentActivity() {
             return true
         }
 
-        val sharedText = if (intent.action == Intent.ACTION_SEND && intent.type == "text/plain") {
-            intent.getStringExtra(Intent.EXTRA_TEXT)
-        } else null
+        val sharedText = when {
+            intent.action == Intent.ACTION_SEND && intent.type == "text/plain" -> intent.getStringExtra(Intent.EXTRA_TEXT)
+            intent.action == Intent.ACTION_PROCESS_TEXT -> intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
+            else -> null
+        }
         if (config.slots.any { it.isConfigured } && (isPlainTap || sharedText != null)) {
             startActivity(Intent(this, QuickPickActivity::class.java).putExtra(EXTRA_SHARED_TEXT, sharedText))
             finishWithoutTransition()
@@ -412,13 +448,14 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * MainActivity only has two real entry points — a launcher tap and an ACTION_SEND share —
+     * MainActivity only has three real entry points — a launcher tap, an ACTION_SEND share and the
+     * text-selection menu (ACTION_PROCESS_TEXT) —
      * plus internal shortcut/configure Intents already handled above. "Not a share" is a more
      * robust plain-tap signal than requiring an exact ACTION_MAIN/CATEGORY_LAUNCHER match, since
      * some OEM launchers don't deliver that combo exactly.
      */
     private fun isPlainLauncherTap(intent: Intent): Boolean =
-        intent.action != Intent.ACTION_SEND
+        intent.action != Intent.ACTION_SEND && intent.action != Intent.ACTION_PROCESS_TEXT
 
     /** Every dispatchIfShortcut finish() follows this: nothing of ours was ever meant to be seen. */
     @Suppress("DEPRECATION")
@@ -465,6 +502,7 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val TAG = "MainActivity"
+        const val ENTRANCE_MS = 260
     }
 }
 

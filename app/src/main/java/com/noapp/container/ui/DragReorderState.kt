@@ -73,19 +73,25 @@ class SlotDragState(initial: List<ShortcutSlot>) {
      * Ignored mid-drag so an external recomposition (e.g. edit-screen save) can't yank the list underfoot.
      *
      * A configured slot that is still there keeps its key, so animateItem moves, adds or removes just
-     * the rows that changed instead of the whole list fading out and back in. Empty rows are all alike,
-     * so they always get fresh keys: reusing one could hand a swiped-away row's state to another.
+     * the rows that changed instead of the whole list fading out and back in. Empty rows are all alike:
+     * while their number stays the same (a reorder, an edit) they keep their keys in order, or every
+     * drop made them fade out and back in. When it changes, they get fresh keys, so a swiped-away
+     * row's state can never pass to another one.
      */
     fun resync(slots: List<ShortcutSlot>) {
         if (draggedIndex >= 0) return
         val unclaimed = items.filter { it.slot.isConfigured }.toMutableList()
+        val oldEmpty = items.filter { !it.slot.isConfigured }
+        val emptyKeys = if (oldEmpty.size == slots.count { !it.isConfigured }) oldEmpty.map { it.stableKey }.iterator() else null
         items = slots.map { slot ->
             val same = if (slot.isConfigured) unclaimed.firstOrNull { it.slot.copy(id = slot.id) == slot } else null
-            if (same != null) {
-                unclaimed.remove(same)
-                DraggableSlot(same.stableKey, slot)
-            } else {
-                DraggableSlot(newKey(), slot)
+            when {
+                same != null -> {
+                    unclaimed.remove(same)
+                    DraggableSlot(same.stableKey, slot)
+                }
+                !slot.isConfigured && emptyKeys != null -> DraggableSlot(emptyKeys.next(), slot)
+                else -> DraggableSlot(newKey(), slot)
             }
         }
     }

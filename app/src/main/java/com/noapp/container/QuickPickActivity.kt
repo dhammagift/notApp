@@ -1,5 +1,6 @@
 package com.noapp.container
 
+import android.app.ActivityOptions
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
@@ -99,13 +100,7 @@ class QuickPickActivity : ComponentActivity() {
                         // Recent apps are a plain launch, not a share target, so this stays off
                         // for the share sheet the same way allowPeek does.
                         showRecentApps = showRecentApps,
-                        onConfigure = {
-                            startActivity(
-                                Intent(this, MainActivity::class.java)
-                                    .putExtra(EXTRA_OPEN_CONFIG, true)
-                            )
-                            finish()
-                        },
+                        onConfigure = { openConfigure() },
                         onDismiss = { finish() }
                     )
                 }
@@ -120,6 +115,21 @@ class QuickPickActivity : ComponentActivity() {
         loadAndDispatch(intent)
     }
 
+    /**
+     * Over to the app's own screens with no system window animation: the stock one scales a
+     * translucent window over a dark backdrop, which showed as black rectangles filling in.
+     * MainActivity fades its content in itself (see its entrance).
+     */
+    @Suppress("DEPRECATION")
+    private fun openConfigure() {
+        startActivity(
+            Intent(this, MainActivity::class.java).putExtra(EXTRA_OPEN_CONFIG, true),
+            ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle()
+        )
+        finish()
+        overridePendingTransition(0, 0)
+    }
+
     /** Returns false if it already redirected to Configure and finished this activity. */
     private fun loadAndDispatch(intent: Intent): Boolean {
         // A fresh dispatch always supersedes any peek bubble left over from a previous
@@ -131,8 +141,7 @@ class QuickPickActivity : ComponentActivity() {
 
         if (configuredSlots.isEmpty() && newSharedText == null) {
             DebugLog.log(this, TAG, "no configured slots, redirecting to Configure")
-            startActivity(Intent(this, MainActivity::class.java).putExtra(EXTRA_OPEN_CONFIG, true))
-            finish()
+            openConfigure()
             return false
         }
 
