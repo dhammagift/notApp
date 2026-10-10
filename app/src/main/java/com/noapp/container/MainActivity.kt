@@ -14,6 +14,9 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.shape.GenericShape
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.fadeIn
@@ -72,6 +75,11 @@ private sealed class Screen {
  */
 const val EXTRA_TILE_TARGET = "extra_tile_target"
 
+/** Where Settings grows from when the list sheet's gear opens it (window coordinates). */
+const val EXTRA_REVEAL_X = "extra_reveal_x"
+const val EXTRA_REVEAL_Y = "extra_reveal_y"
+const val REVEAL_MS = 420
+
 class MainActivity : ComponentActivity() {
     // Hoisted out of setContent (rather than a plain `remember`) so onNewIntent can navigate
     // back to Config below without needing a reference into the running composition.
@@ -80,6 +88,13 @@ class MainActivity : ComponentActivity() {
     // Bumped when the list sheet's gear brings us up: that arrival has no system window animation
     // (QuickPickActivity.openConfigure), so the content fades and settles in on its own instead.
     private var entranceSeq by mutableStateOf(0)
+    private var revealFrom by mutableStateOf<Offset?>(null)
+
+    private fun readReveal(intent: Intent) {
+        revealFrom = if (intent.hasExtra(EXTRA_REVEAL_X)) {
+            Offset(intent.getFloatExtra(EXTRA_REVEAL_X, 0f), intent.getFloatExtra(EXTRA_REVEAL_Y, 0f))
+        } else null
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -120,7 +135,10 @@ class MainActivity : ComponentActivity() {
         // it costs the launch nothing.
         ShortcutSync.sync(this, initialConfig.mode, initialConfig.slots, initialConfig.useAllSlotsInDirectMode)
         DebugLog.log(this, TAG, "showing Config screen")
-        if (savedInstanceState == null && intent.getBooleanExtra(EXTRA_OPEN_CONFIG, false)) entranceSeq = 1
+        if (savedInstanceState == null && intent.getBooleanExtra(EXTRA_OPEN_CONFIG, false)) {
+            readReveal(intent)
+            entranceSeq = 1
+        }
 
         setContent {
             var mode by remember { mutableStateOf(initialConfig.mode) }
@@ -166,15 +184,28 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(entranceSeq) {
                     if (entranceSeq > 0) {
                         entrance.snapTo(0f)
-                        entrance.animateTo(1f, tween(ENTRANCE_MS, easing = FastOutSlowInEasing))
+                        entrance.animateTo(1f, tween(if (revealFrom != null) REVEAL_MS else ENTRANCE_MS, easing = FastOutSlowInEasing))
                     }
                 }
+                // From the sheet's gear: a circle grows out of the gear until it covers the screen,
+                // the sheet still visible around it. Otherwise a plain fade and settle.
+                val origin = revealFrom
                 Surface(
                     Modifier.fillMaxSize().graphicsLayer {
-                        alpha = entrance.value
-                        val scale = 0.96f + 0.04f * entrance.value
-                        scaleX = scale
-                        scaleY = scale
+                        if (origin != null && entrance.value < 1f) {
+                            // Built here, per frame: a shape that read the progress itself would
+                            // not be re-asked for its outline as the progress changes.
+                            val far = maxOf(origin.getDistance(), (origin - Offset(size.width, 0f)).getDistance(),
+                                (origin - Offset(0f, size.height)).getDistance(), (origin - Offset(size.width, size.height)).getDistance())
+                            val radius = far * entrance.value
+                            clip = true
+                            shape = GenericShape { _, _ -> addOval(Rect(origin, radius)) }
+                        } else {
+                            alpha = entrance.value
+                            val scale = 0.96f + 0.04f * entrance.value
+                            scaleX = scale
+                            scaleY = scale
+                        }
                     },
                     color = MaterialTheme.colorScheme.background
                 ) {
@@ -295,6 +326,7 @@ class MainActivity : ComponentActivity() {
             // other screen. Navigate to Config so the user actually lands somewhere they can
             // add a shortcut, instead of just resurfacing whatever screen was left open.
             screen = Screen.Config
+            readReveal(intent)
             entranceSeq++
         } else {
             dispatchIfShortcut(intent, config)

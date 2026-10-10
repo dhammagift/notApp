@@ -3,6 +3,8 @@ package com.noapp.container
 import android.app.ActivityOptions
 import android.content.Intent
 import android.os.Bundle
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.isSpecified
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -100,7 +102,7 @@ class QuickPickActivity : ComponentActivity() {
                         // Recent apps are a plain launch, not a share target, so this stays off
                         // for the share sheet the same way allowPeek does.
                         showRecentApps = showRecentApps,
-                        onConfigure = { openConfigure() },
+                        onConfigure = { gear -> openConfigure(gear) },
                         onDismiss = { finish() }
                     )
                 }
@@ -115,19 +117,31 @@ class QuickPickActivity : ComponentActivity() {
         loadAndDispatch(intent)
     }
 
+    // Set while Settings grows out of the gear on top of this sheet: the sheet stays underneath
+    // until it has, and leaving it this way must not turn into the floating button (onStop).
+    private var leavingForConfig = false
+
     /**
      * Over to the app's own screens with no system window animation: the stock one scales a
      * translucent window over a dark backdrop, which showed as black rectangles filling in.
-     * MainActivity fades its content in itself (see its entrance).
+     * From the gear, MainActivity grows a circle out of [gear] over this sheet, which finishes once
+     * that is done; with no point (nothing configured yet) it fades in instead.
      */
     @Suppress("DEPRECATION")
-    private fun openConfigure() {
-        startActivity(
-            Intent(this, MainActivity::class.java).putExtra(EXTRA_OPEN_CONFIG, true),
-            ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle()
-        )
-        finish()
-        overridePendingTransition(0, 0)
+    private fun openConfigure(gear: Offset = Offset.Unspecified) {
+        val intent = Intent(this, MainActivity::class.java).putExtra(EXTRA_OPEN_CONFIG, true)
+        if (gear.isSpecified) intent.putExtra(EXTRA_REVEAL_X, gear.x).putExtra(EXTRA_REVEAL_Y, gear.y)
+        startActivity(intent, ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle())
+        if (gear.isSpecified) {
+            leavingForConfig = true
+            window.decorView.postDelayed({
+                finish()
+                overridePendingTransition(0, 0)
+            }, REVEAL_MS + 150L)
+        } else {
+            finish()
+            overridePendingTransition(0, 0)
+        }
     }
 
     /** Returns false if it already redirected to Configure and finished this activity. */
@@ -177,7 +191,7 @@ class QuickPickActivity : ComponentActivity() {
         // service itself) — this only fires for actually leaving via Home/recents/switching
         // apps while the sheet was still up. isChangingConfigurations excludes a plain
         // rotation, which also stops this Activity but isn't "leaving" it.
-        if (!isFinishing && !isChangingConfigurations && allowPeek && Settings.canDrawOverlays(this)) {
+        if (!isFinishing && !leavingForConfig && !isChangingConfigurations && allowPeek && Settings.canDrawOverlays(this)) {
             startService(Intent(this, QuickPickPeekOverlayService::class.java))
             finish()
         }

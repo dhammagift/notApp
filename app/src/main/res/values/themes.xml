@@ -6,6 +6,7 @@
 
     <!-- QuickPickActivity: lets whatever was on screen show through behind the sheet
          instead of hard-cutting to a blank app window. -->
+    <!-- values-v31/themes.xml repeats this style with an invisible system splash: change both. -->
     <style name="Theme.NoApp.Transparent" parent="Theme.NoApp">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>

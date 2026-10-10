@@ -1,5 +1,8 @@
 package com.noapp.container.ui
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import kotlinx.coroutines.delay
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.layout.onSizeChanged
@@ -120,10 +123,12 @@ fun QuickPickSheet(
     sharedText: String?,
     allowPeek: Boolean = false,
     showRecentApps: Boolean = false,
-    onConfigure: () -> Unit,
+    /** Gets the gear's centre in window coordinates: Settings grows out of that point. */
+    onConfigure: (Offset) -> Unit,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+    var gearCenter by remember { mutableStateOf(Offset.Unspecified) }
     // Falls back to this in-Activity pill (below) only when the "draw over other
     // apps" permission isn't granted — see requestDismiss() below.
     var peeked by remember { mutableStateOf(false) }
@@ -290,7 +295,10 @@ fun QuickPickSheet(
                         }
                     }
                     if (recentApps.isEmpty()) Spacer(Modifier.weight(1f))
-                    IconButton(onClick = onConfigure) {
+                    IconButton(
+                        onClick = { onConfigure(gearCenter) },
+                        modifier = Modifier.onGloballyPositioned { gearCenter = it.boundsInWindow().center }
+                    ) {
                         Icon(
                             Icons.Default.Settings,
                             contentDescription = stringResource(R.string.quick_pick_configure_desc),

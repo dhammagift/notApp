@@ -1,0 +1,19 @@
+<resources>
+    <!-- Same as values/themes.xml, plus an invisible system splash. Android 12+ may still put a
+         splash on a launcher tap whatever the theme says (seen on Motorola and Honor: the icon on
+         black for a moment). It cannot be turned off, so everything it draws is transparent:
+         the icon, the plate behind it and the background, and it has no animation time. -->
+    <style name="Theme.NoApp.Transparent" parent="Theme.NoApp">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
+        <item name="android:windowSplashScreenBackground">@android:color/transparent</item>
+        <item name="android:windowSplashScreenAnimationDuration">0</item>
+    </style>
+</resources>
