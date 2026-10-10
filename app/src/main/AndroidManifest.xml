@@ -54,15 +54,26 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
+        </activity>
 
-            <!-- Text-selection menu: select a word anywhere, "Not App", pick an item - same sheet as
-                 Share, so {{word}} items get the selection. MainActivity only forwards it to the
-                 sheet and finishes, so joining the caller's task (a result launch) leaves nothing
-                 of ours behind in it. -->
-            <intent-filter>
+        <!-- Text-selection menu ("Not App" next to Copy / Translate in any app): select a word, pick an
+             item, {{word}} items get the selection - the same sheet as Share. A trampoline, not
+             MainActivity: the caller starts it for a result, which pins it to the CALLER's task; this
+             one opens the sheet in our own task and finishes at once (same as the Dictionary's).
+             priority 1000: the menu lists handlers by priority before package name, at 0 it sank
+             below every com.* app. text/* rather than text/plain: rich-text editors send text/html. -->
+        <activity
+            android:name=".ProcessTextActivity"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.NoApp.Transparent"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:exported="true">
+            <intent-filter android:priority="1000">
                 <action android:name="android.intent.action.PROCESS_TEXT" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
+                <data android:mimeType="text/*" />
             </intent-filter>
         </activity>
 

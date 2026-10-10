@@ -434,11 +434,9 @@ class MainActivity : ComponentActivity() {
             return true
         }
 
-        val sharedText = when {
-            intent.action == Intent.ACTION_SEND && intent.type == "text/plain" -> intent.getStringExtra(Intent.EXTRA_TEXT)
-            intent.action == Intent.ACTION_PROCESS_TEXT -> intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
-            else -> null
-        }
+        val sharedText = if (intent.action == Intent.ACTION_SEND && intent.type == "text/plain") {
+            intent.getStringExtra(Intent.EXTRA_TEXT)
+        } else null
         if (config.slots.any { it.isConfigured } && (isPlainTap || sharedText != null)) {
             startActivity(Intent(this, QuickPickActivity::class.java).putExtra(EXTRA_SHARED_TEXT, sharedText))
             finishWithoutTransition()
@@ -448,14 +446,13 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * MainActivity only has three real entry points — a launcher tap, an ACTION_SEND share and the
-     * text-selection menu (ACTION_PROCESS_TEXT) —
+     * MainActivity only has two real entry points — a launcher tap and an ACTION_SEND share —
      * plus internal shortcut/configure Intents already handled above. "Not a share" is a more
      * robust plain-tap signal than requiring an exact ACTION_MAIN/CATEGORY_LAUNCHER match, since
      * some OEM launchers don't deliver that combo exactly.
      */
     private fun isPlainLauncherTap(intent: Intent): Boolean =
-        intent.action != Intent.ACTION_SEND && intent.action != Intent.ACTION_PROCESS_TEXT
+        intent.action != Intent.ACTION_SEND
 
     /** Every dispatchIfShortcut finish() follows this: nothing of ours was ever meant to be seen. */
     @Suppress("DEPRECATION")
