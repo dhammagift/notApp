@@ -6,6 +6,7 @@ import com.noapp.container.model.AppMode
 import com.noapp.container.model.ShortcutSlot
 import com.noapp.container.model.SlotType
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class ConfigStoreTest {
@@ -70,5 +71,24 @@ class ConfigStoreTest {
     @Test
     fun `an unconfigured slot has no target to point the tile at`() {
         assertEquals(null, ShortcutSlot(id = 0).targetKey)
+    }
+
+    @Test
+    fun `an import that is not a Not App config is refused, not read as an empty list`() {
+        for (json in listOf("not json", "[1,2]", "{\"foo\":1}", "{\"mode\":\"DIRECT\"}", "{\"slots\":\"x\"}")) {
+            assertThrows(json, Exception::class.java) { ConfigStore.parse(json) }
+        }
+        val config = AppConfig(slots = listOf(ShortcutSlot(id = 0, type = SlotType.URL, label = "Wiki", param = "https://wikipedia.org")))
+        assertEquals(config, ConfigStore.parse(ConfigStore.toJson(config)))
+    }
+
+    @Test
+    fun `a colour that would not draw comes back as the default`() {
+        for (bad in listOf("\"#12\"", "\"#GGGGGG\"", "\"null\"", "null", "\"\"")) {
+            val restored = ConfigStore.parse("{\"slots\":[{\"type\":\"URL\",\"label\":\"x\",\"color\":$bad,\"param\":\"https://a\"}]}")
+            assertEquals(bad, ShortcutSlot.DEFAULT_COLOR, restored.slots[0].color)
+        }
+        val kept = ConfigStore.parse("{\"slots\":[{\"type\":\"URL\",\"color\":\"#C0574C\",\"param\":\"https://a\"}]}")
+        assertEquals("#C0574C", kept.slots[0].color)
     }
 }

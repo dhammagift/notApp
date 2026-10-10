@@ -706,7 +706,13 @@ private fun NoAppRoot(
         }
 
         is Screen.Settings -> SettingsScreen(
-            config = AppConfig(mode, slots.toList(), useAllSlotsInDirectMode, iconVariant, showPeekBubble, peekBubbleReturns, peekBubbleSize, peekBubbleAlpha, peekBubbleDockPeek, showRecentApps, theme),
+            // Named: positional, tileSlot was silently left out, and the backup lost the tile's item.
+            config = AppConfig(
+                mode = mode, slots = slots.toList(), useAllSlotsInDirectMode = useAllSlotsInDirectMode, iconVariant = iconVariant,
+                showPeekBubble = showPeekBubble, peekBubbleReturns = peekBubbleReturns, peekBubbleSize = peekBubbleSize,
+                peekBubbleAlpha = peekBubbleAlpha, peekBubbleDockPeek = peekBubbleDockPeek, showRecentApps = showRecentApps,
+                theme = theme, tileSlot = tileSlot
+            ),
             spotlight = settingsSpotlight,
             onSpotlightShown = { settingsSpotlight = null },
             hint = hint,

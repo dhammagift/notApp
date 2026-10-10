@@ -55,6 +55,7 @@
     <string name="toast_export_failed">Ошибка экспорта: %1$s</string>
     <string name="toast_imported">Импортировано</string>
     <string name="toast_import_failed">Ошибка импорта: %1$s</string>
+    <string name="toast_import_not_config">Это не файл настроек Not App. Ничего не изменено.</string>
     <string name="toast_pin_unsupported">Ваш лаунчер не поддерживает закрепление ярлыков</string>
     <string name="toast_launch_failed">Не удалось запустить \"%1$s\": %2$s</string>
 

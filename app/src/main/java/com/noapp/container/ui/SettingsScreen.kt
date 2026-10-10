@@ -95,6 +95,9 @@ import com.noapp.container.model.AppConfig
 import com.noapp.container.model.AppTheme
 import com.noapp.container.recents.RecentApps
 
+/** An import that is not a Not App config at all, told apart from a file that could not be read. */
+private class NotAConfigFile : Exception()
+
 private const val GITHUB_URL = "https://github.com/dhammagift/notApp"
 private const val GITHUB_RELEASES_URL = "$GITHUB_URL/releases/latest"
 
@@ -210,9 +213,12 @@ fun SettingsScreen(
     ) { uri: Uri? ->
         uri ?: return@rememberLauncherForActivityResult
         runCatching {
-            val json = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+            context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
                 ?: error("Empty file")
-            ConfigStore.fromJson(json)
+        }.mapCatching { json ->
+            // Not a Not App config (no "slots", broken JSON): refused, and the current list stays.
+            runCatching { ConfigStore.parse(json) }
+                .getOrElse { throw NotAConfigFile() }
         }.onSuccess { imported ->
             onImportConfig(imported)
             Toast.makeText(context, context.getString(R.string.toast_imported), Toast.LENGTH_SHORT).show()
@@ -224,7 +230,9 @@ fun SettingsScreen(
             if (imported.showPeekBubble && !AndroidSettings.canDrawOverlays(context)) showPeekOverlayExplainer = true
             if (imported.showRecentApps && !RecentApps.hasUsageAccess(context)) showUsageAccessExplainer = true
         }.onFailure {
-            Toast.makeText(context, context.getString(R.string.toast_import_failed, it.message), Toast.LENGTH_SHORT).show()
+            val text = if (it is NotAConfigFile) context.getString(R.string.toast_import_not_config)
+            else context.getString(R.string.toast_import_failed, it.message)
+            Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
         }
     }
 

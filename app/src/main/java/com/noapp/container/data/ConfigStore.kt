@@ -25,6 +25,7 @@ object ConfigStore {
 
     private const val PREFS_NAME = "no_app_prefs"
     private const val KEY_CONFIG_JSON = "config_json"
+    private val COLOR_HEX = Regex("#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})")
 
     fun toJson(config: AppConfig): String {
         val arr = JSONArray()
@@ -55,7 +56,15 @@ object ConfigStore {
             .toString()
     }
 
-    fun fromJson(json: String): AppConfig = runCatching {
+    /** Lenient: whatever is stored always loads, a broken value falls back to the defaults. */
+    fun fromJson(json: String): AppConfig = runCatching { parse(json) }.getOrDefault(AppConfig())
+
+    /**
+     * Strict, for an imported file: throws unless [json] is a Not App config (an object with a
+     * "slots" array), so a wrong or broken file is refused instead of replacing the list with an
+     * empty default one.
+     */
+    fun parse(json: String): AppConfig {
         val root = JSONObject(json)
         val mode = runCatching { AppMode.valueOf(root.optString("mode", AppMode.LIST.name)) }
             .getOrDefault(AppMode.LIST)
@@ -71,12 +80,14 @@ object ConfigStore {
                 id = i,
                 type = type,
                 label = obj.optString("label", ""),
-                color = obj.optString("color", ShortcutSlot.DEFAULT_COLOR),
+                // Our own exports always hold #RRGGBB; anything else (a typo, "#12", JSON null,
+                // which Android's optString reads as "null") would not draw.
+                color = obj.optString("color", ShortcutSlot.DEFAULT_COLOR).takeIf { COLOR_HEX.matches(it) } ?: ShortcutSlot.DEFAULT_COLOR,
                 param = obj.optString("param", ""),
                 customIcon = obj.optString("customIcon", "")
             )
         }
-        AppConfig(
+        return AppConfig(
             mode = mode,
             slots = slots.ifEmpty { ShortcutSlot.emptySlots() },
             useAllSlotsInDirectMode = root.optBoolean("useAllSlotsInDirectMode", false),
@@ -96,7 +107,7 @@ object ConfigStore {
                 .getOrDefault(AppTheme.SYSTEM),
             tileSlot = root.optString("tileSlot", AppConfig.TILE_NONE)
         )
-    }.getOrDefault(AppConfig())
+    }
 
     fun load(context: Context): AppConfig {
         val json = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
