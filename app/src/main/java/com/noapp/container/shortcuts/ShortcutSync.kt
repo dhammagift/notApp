@@ -141,6 +141,14 @@ object ShortcutSync {
     fun pinShortcutFor(context: Context, slot: ShortcutSlot, component: ComponentName): ShortcutInfoCompat =
         build(context, slot, component, PIN_PREFIX + slot.targetKey, Intent().putExtra(EXTRA_PIN_TARGET, slot.targetKey))
 
+    /** Items that have an icon of their own on the home screen right now, by targetKey. */
+    fun pinnedTargets(context: Context, slots: List<ShortcutSlot>): Set<String> = runCatching {
+        ShortcutManagerCompat.getShortcuts(context, ShortcutManagerCompat.FLAG_MATCH_PINNED).mapNotNull { info ->
+            if (info.id.startsWith(PIN_PREFIX)) info.id.removePrefix(PIN_PREFIX)
+            else info.id.removePrefix("slot_").toIntOrNull()?.let { slots.getOrNull(it)?.targetKey }
+        }.toSet()
+    }.getOrDefault(emptySet())
+
     private fun build(context: Context, slot: ShortcutSlot, component: ComponentName, id: String, extras: Intent): ShortcutInfoCompat {
         val intent = Intent(context, MainActivity::class.java)
             .setAction(Intent.ACTION_VIEW)

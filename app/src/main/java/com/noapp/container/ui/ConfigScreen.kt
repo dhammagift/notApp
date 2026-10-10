@@ -115,6 +115,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.zIndex
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.noapp.container.R
 import com.noapp.container.icon.AndroidIcon
 import com.noapp.container.icon.BoltIcon
@@ -440,6 +444,18 @@ fun ConfigScreen(
     val view = LocalView.current
     val undoLabel = stringResource(R.string.common_undo)
 
+    // Which items already have a home-screen icon, for the pin's lit state. Re-read on every return
+    // here: the launcher's pin dialog, or removing an icon from the home screen, happen outside.
+    var pinnedKeys by remember { mutableStateOf(emptySet<String>()) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, slots.toList()) {
+        val refresh = { pinnedKeys = ShortcutSync.pinnedTargets(context, slots.toList()) }
+        refresh()
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) refresh() }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     // Reuses this screen's own Scaffold-hosted SnackbarHost (already correctly positioned above
     // the FAB and system bars, same as the Undo snackbar below) rather than a separate host.
     // Consumed in `finally`, i.e. once the snackbar is done OR this screen leaves composition
@@ -753,11 +769,13 @@ fun ConfigScreen(
                                 Spacer(Modifier.width(10.dp))
                                 // Pin: one more home-screen icon for this item, as many times and for as
                                 // many items as the user likes — the launcher shows its own confirm.
+                                val isPinned = slot.targetKey != null && slot.targetKey in pinnedKeys
                                 Icon(
                                     painterResource(R.drawable.ic_marker_pin),
                                     contentDescription = stringResource(R.string.config_pin_action),
-                                    tint = inactiveTint,
+                                    tint = if (isPinned) MaterialTheme.colorScheme.primary else inactiveTint,
                                     modifier = Modifier
+                                        .popOnChange(isPinned)
                                         .size(24.dp)
                                         .clickable(enabled = slot.isConfigured) {
                                             view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
