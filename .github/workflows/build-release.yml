@@ -152,6 +152,8 @@ jobs:
           mv "${{ steps.sign_app.outputs.signedReleaseFile }}" NotApp.apk
           mv "${{ steps.sign_git.outputs.signedReleaseFile }}" NotApp-git.apk
           mv "${{ steps.sign_bundle.outputs.signedReleaseFile }}" NotApp.aab
+          # R8's name map for the Play build: without it Play shows crashes as a.b.c() lines.
+          cp app/build/outputs/mapping/release/mapping.txt NotApp-mapping.txt
 
       # Branch push, or manual "Run workflow" with no version filled in: just hand back the
       # signed APK/AAB as a downloadable workflow artifact (from the run's Summary page) —
@@ -182,12 +184,14 @@ jobs:
           files: |
             NotApp-git.apk
             NotApp.aab
+            NotApp-mapping.txt
           # Prepended to the generated notes on every release, so the two files never look like a mix-up.
           body: |
             Thanks for stopping by! Two files here, on purpose:
 
             - **`NotApp-git.apk`** — install this one. It is called *Not App Git* and has its own package, so it lives next to the Google Play version instead of replacing it: you can keep both, each with its own list.
             - **`NotApp.aab`** — exactly what goes to Google Play, here for transparency (e.g. to compare it with the source). Phones don't install it.
+            - `NotApp-mapping.txt` — a technical file for reading crash reports. Not for installing.
 
           draft: false
           prerelease: false
@@ -230,6 +234,7 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: gift.dhamma.noapp
           releaseFiles: NotApp.aab
+          mappingFile: NotApp-mapping.txt
           track: alpha
           status: completed
 

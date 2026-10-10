@@ -24,7 +24,8 @@ jobs:
       - name: Get the release's bundle
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release download "${{ inputs.tag }}" --repo "${{ github.repository }}" --pattern NotApp.aab
+        # The mapping comes along where the release has one (from 0.6.7 on), so Play shows readable crashes.
+        run: gh release download "${{ inputs.tag }}" --repo "${{ github.repository }}" --pattern NotApp.aab --pattern NotApp-mapping.txt
 
       - name: Upload to Google Play
         uses: r0adkll/upload-google-play@v1
@@ -32,6 +33,7 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: gift.dhamma.noapp
           releaseFiles: NotApp.aab
+          mappingFile: ${{ hashFiles('NotApp-mapping.txt') != '' && 'NotApp-mapping.txt' || '' }}
           track: ${{ inputs.track }}
           status: completed
 
