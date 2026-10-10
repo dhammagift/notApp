@@ -1,6 +1,6 @@
 # Recipe for F-Droid: goes to gitlab.com/fdroid/fdroiddata as metadata/gift.dhamma.noapp.droid.yml
 # (merge request). Kept here so it lives next to the code it builds; not used by our own CI.
-# Formatted as fdroid rewritemeta writes it (their CI checks that).
+# Builds v0.6.6 (commit 2a82393). Formatted as fdroid rewritemeta writes it (their CI checks that).
 Categories:
   - System
 License: MIT
@@ -18,7 +18,7 @@ Repo: https://github.com/dhammagift/notApp.git
 Builds:
   - versionName: 0.6.6
     versionCode: 606
-    commit: v0.6.6
+    commit: 2a82393580d045bb1d11806c1040c11fa27b04d6
     subdir: app
     gradle:
       - yes
