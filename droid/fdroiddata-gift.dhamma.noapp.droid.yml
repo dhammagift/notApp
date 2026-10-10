@@ -1,6 +1,6 @@
 # Recipe for F-Droid: goes to gitlab.com/fdroid/fdroiddata as metadata/gift.dhamma.noapp.droid.yml
 # (merge request). Kept here so it lives next to the code it builds; not used by our own CI.
-# The first build has to be a tag that already has -Pdroid (v0.6.6 or later).
+# The first build is commit 0c7dc62: the app of v0.6.5 plus -Pdroid (the tag itself predates the flag).
 Categories:
   - System
 License: MIT
@@ -16,9 +16,9 @@ RepoType: git
 Repo: https://github.com/dhammagift/notApp.git
 
 Builds:
-  - versionName: 0.6.6
-    versionCode: 606
-    commit: v0.6.6
+  - versionName: 0.6.5
+    versionCode: 605
+    commit: 0c7dc62a1d1c8b4f0714168ca0a734808941ab31
     subdir: app
     gradle:
       - yes
@@ -28,5 +28,5 @@ Builds:
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v\d+\.\d+\.\d+$
 UpdateCheckData: app/build.gradle.kts|val appVersionCode = (\d+)|app/build.gradle.kts|val appVersion = "(.*)"
-CurrentVersion: 0.6.6
-CurrentVersionCode: 606
+CurrentVersion: 0.6.5
+CurrentVersionCode: 605
