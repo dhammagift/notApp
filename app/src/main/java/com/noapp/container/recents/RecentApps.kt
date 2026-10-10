@@ -4,6 +4,7 @@ import android.app.AppOpsManager
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
+import android.os.Build
 import android.os.Process
 
 data class RecentApp(val packageName: String, val label: String)
@@ -21,11 +22,14 @@ private const val LOOKBACK_MS = 24 * 60 * 60 * 1000L // plenty to fill a handful
 object RecentApps {
     fun hasUsageAccess(context: Context): Boolean {
         val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
-        val mode = appOps.unsafeCheckOpNoThrow(
-            AppOpsManager.OPSTR_GET_USAGE_STATS,
-            Process.myUid(),
-            context.packageName
-        )
+        // unsafeCheckOpNoThrow only exists from API 29; below that it is a NoSuchMethodError on
+        // Android 7-9 (minSdk is 24), and checkOpNoThrow is the same call under its old name.
+        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            appOps.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName)
+        } else {
+            @Suppress("DEPRECATION")
+            appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName)
+        }
         return mode == AppOpsManager.MODE_ALLOWED
     }
 

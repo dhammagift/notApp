@@ -163,6 +163,8 @@ class QuickPickPeekOverlayService : Service() {
         val defaultX = maxX - marginPx
         val defaultY = maxY - marginPx * 3 // a bit above the very bottom edge, clear of gesture nav
         val startX = if (dock != 0) dockedX(dock) else prefs.getInt(KEY_PEEK_X, defaultX).coerceIn(0, maxX)
+        // Clamped to this screen on every show, so a position saved on another screen size (a fold,
+        // a turn) can never leave the bubble out of reach.
         val startY = prefs.getInt(KEY_PEEK_Y, defaultY).coerceIn(0, maxY)
 
         val params = WindowManager.LayoutParams(
@@ -441,23 +443,5 @@ class QuickPickPeekOverlayService : Service() {
         trashView?.let { v -> runCatching { windowManager?.removeView(v) } }
         trashView = null
         super.onDestroy()
-    }
-
-    companion object {
-        /**
-         * Escape hatch in case the bubble ever ends up somewhere the user can't get back to
-         * (e.g. left stranded after a display/orientation change while showing): forgets the
-         * saved position and docking — the next bubble starts fresh at the default corner —
-         * and removes any bubble showing right now. Called on entering and leaving Settings.
-         */
-        fun resetSavedPosition(context: Context) {
-            context.stopService(Intent(context, QuickPickPeekOverlayService::class.java))
-            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit()
-                .remove(KEY_PEEK_X)
-                .remove(KEY_PEEK_Y)
-                .remove(KEY_PEEK_DOCK)
-                .apply()
-        }
     }
 }

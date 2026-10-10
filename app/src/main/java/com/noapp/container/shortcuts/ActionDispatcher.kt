@@ -11,9 +11,11 @@ import com.noapp.container.model.SlotType
 /** Executes one slot's target. [sharedText] is non-null only when triggered via the Sharing API. */
 object ActionDispatcher {
     fun execute(context: Context, slot: ShortcutSlot, sharedText: String? = null) {
-        val intent = intentFor(context, slot, sharedText) ?: return
+        if (!slot.isConfigured) return
+        // A configured item that cannot be built (its app was uninstalled, a broken intent URI) says
+        // so, instead of the sheet closing on nothing.
         runCatching {
-            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            context.startActivity(buildIntent(context, slot, sharedText).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }.onFailure {
             Toast.makeText(context, context.getString(R.string.toast_launch_failed, slot.label, it.message), Toast.LENGTH_SHORT).show()
         }
@@ -28,20 +30,38 @@ object ActionDispatcher {
      */
     fun intentFor(context: Context, slot: ShortcutSlot, sharedText: String? = null): Intent? {
         if (!slot.isConfigured) return null
-        return runCatching {
-            when (slot.type) {
-                SlotType.APP -> appIntent(context, slot.param, sharedText)
-                SlotType.URL -> Intent(Intent.ACTION_VIEW, Uri.parse(resolveTemplate(slot.param, sharedText)))
-                SlotType.INTENT ->
-                    Intent.parseUri(resolveTemplate(slot.param, sharedText), Intent.URI_INTENT_SCHEME)
-                null -> null
-            }
-        }.getOrNull()
+        return runCatching { buildIntent(context, slot, sharedText) }.getOrNull()
     }
 
-    /** {{word}} in a URL/Intent param is replaced with the shared text (URL-encoded). No-op if absent or no share. */
+    private fun buildIntent(context: Context, slot: ShortcutSlot, sharedText: String?): Intent =
+        when (slot.type) {
+            SlotType.APP -> appIntent(context, slot.param, sharedText)
+            SlotType.URL -> Intent(Intent.ACTION_VIEW, Uri.parse(resolveTemplate(slot.param, sharedText)))
+            SlotType.INTENT -> sanitized(context, Intent.parseUri(resolveTemplate(slot.param, sharedText), Intent.URI_INTENT_SCHEME))
+            null -> error("No type")
+        }
+
+    /**
+     * An intent URI may come from someone else's config file, and started by Not App it would carry
+     * Not App's own rights: so none of Not App's own screens (exported or not) and no selector, which
+     * could swap in another target. URI grant flags parseUri already drops itself (without
+     * URI_ALLOW_UNSAFE), so the FileProvider can't be handed out through launchFlags.
+     */
+    private fun sanitized(context: Context, intent: Intent): Intent {
+        require(intent.component?.packageName != context.packageName && intent.`package` != context.packageName) {
+            "Not App's own screens can't be an item"
+        }
+        intent.selector = null
+        return intent
+    }
+
+    /**
+     * {{word}} in a URL/Intent param is replaced with the shared text (URL-encoded). A plain tap has
+     * no text, so the placeholder goes away: a preset like wa.me/{{word}} then opens the app's own
+     * page instead of a search for the literal "{{word}}".
+     */
     private fun resolveTemplate(param: String, sharedText: String?): String =
-        if (sharedText != null) param.replace("{{word}}", Uri.encode(sharedText)) else param
+        param.replace("{{word}}", if (sharedText != null) Uri.encode(sharedText) else "")
 
     /**
      * Forward shared text natively via ACTION_SEND if the target app can receive it

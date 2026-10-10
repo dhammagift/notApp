@@ -170,7 +170,6 @@ fun QuickPickSheet(
             delay(16)
             waited += 16
         }
-        delay(50)
         offsetY.snapTo(sheetHeightPx.toFloat())
         sheetRising = true
         offsetY.animateTo(0f, SheetMotion.enterSpring)

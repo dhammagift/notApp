@@ -67,7 +67,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -95,7 +94,6 @@ import com.noapp.container.data.ReviewStore
 import com.noapp.container.model.AppConfig
 import com.noapp.container.model.AppTheme
 import com.noapp.container.recents.RecentApps
-import com.noapp.container.shortcuts.QuickPickPeekOverlayService
 
 private const val GITHUB_URL = "https://github.com/dhammagift/notApp"
 private const val GITHUB_RELEASES_URL = "$GITHUB_URL/releases/latest"
@@ -188,14 +186,6 @@ fun SettingsScreen(
         } finally {
             onHintShown(pending)
         }
-    }
-
-    // Cheap insurance against the MIX/LIST peek bubble ever being stuck somewhere the user
-    // can't reach (e.g. after a display change while it was showing): visiting Settings —
-    // entering or leaving — always resets it back to its default corner.
-    DisposableEffect(Unit) {
-        QuickPickPeekOverlayService.resetSavedPosition(context)
-        onDispose { QuickPickPeekOverlayService.resetSavedPosition(context) }
     }
 
     val exportLauncher = rememberLauncherForActivityResult(

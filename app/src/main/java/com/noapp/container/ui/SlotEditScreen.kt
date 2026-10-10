@@ -45,7 +45,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,26 +78,28 @@ fun SlotEditScreen(mode: AppMode, slot: ShortcutSlot, onSave: (ShortcutSlot) -> 
     // A slot with no type yet (tapped straight from an empty row, not the "+" menu) defaults
     // to App — by far the most common choice — so it gets the same immediate-picker treatment
     // below instead of landing on the type-selector chips first.
-    var type by remember { mutableStateOf(slot.type ?: SlotType.APP) }
-    var label by remember { mutableStateOf(slot.label) }
+    // rememberSaveable throughout: a turn, a fold or a theme change recreates the Activity, and the
+    // half-typed address or label used to be lost with it.
+    var type by rememberSaveable { mutableStateOf(slot.type ?: SlotType.APP) }
+    var label by rememberSaveable { mutableStateOf(slot.label) }
     // Tracks the last value we auto-filled label with, so re-picking a different app/activity/
     // preset updates it too — but only while the user hasn't typed their own label over it.
-    var lastAutoLabel by remember { mutableStateOf<String?>(null) }
+    var lastAutoLabel by rememberSaveable { mutableStateOf<String?>(null) }
     fun applyAutoLabel(value: String) {
         if (label.isBlank() || label == lastAutoLabel) label = value
         lastAutoLabel = value
     }
-    var color by remember { mutableStateOf(slot.color) }
-    var param by remember { mutableStateOf(slot.param) }
-    var customIcon by remember { mutableStateOf(slot.customIcon) }
+    var color by rememberSaveable { mutableStateOf(slot.color) }
+    var param by rememberSaveable { mutableStateOf(slot.param) }
+    var customIcon by rememberSaveable { mutableStateOf(slot.customIcon) }
     // Landing here fresh on an unconfigured App slot — skip the extra "Choose app" tap and
     // open the picker immediately.
-    var showAppPicker by remember { mutableStateOf(type == SlotType.APP && param.isBlank()) }
+    var showAppPicker by rememberSaveable { mutableStateOf(type == SlotType.APP && param.isBlank()) }
     // Two-step "build an Intent by picking an Activity" flow: pick the target app first,
     // then one of its exported activities — avoids hand-typing an intent:// URI.
-    var showActivityAppPicker by remember { mutableStateOf(false) }
-    var activityPickerPackage by remember { mutableStateOf<String?>(null) }
-    var activityPickerAppLabel by remember { mutableStateOf("") }
+    var showActivityAppPicker by rememberSaveable { mutableStateOf(false) }
+    var activityPickerPackage by rememberSaveable { mutableStateOf<String?>(null) }
+    var activityPickerAppLabel by rememberSaveable { mutableStateOf("") }
 
     val title = if (mode != AppMode.LIST && slot.id == 0) {
         stringResource(R.string.slot_edit_title_main)

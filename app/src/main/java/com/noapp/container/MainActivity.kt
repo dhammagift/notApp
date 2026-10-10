@@ -89,6 +89,10 @@ class MainActivity : ComponentActivity() {
     // (QuickPickActivity.openConfigure), so the content fades and settles in on its own instead.
     private var entranceSeq by mutableStateOf(0)
     private var revealFrom by mutableStateOf<Offset?>(null)
+    // Hoisted like [screen] so onStart can re-read it: dragging the floating button to the trash
+    // turns this off in storage while this instance sits in the background, and the next persist()
+    // from here used to write the stale "on" back.
+    private var showPeekBubble by mutableStateOf(false)
 
     private fun readReveal(intent: Intent) {
         revealFrom = if (intent.hasExtra(EXTRA_REVEAL_X)) {
@@ -135,6 +139,9 @@ class MainActivity : ComponentActivity() {
         // it costs the launch nothing.
         ShortcutSync.sync(this, initialConfig.mode, initialConfig.slots, initialConfig.useAllSlotsInDirectMode)
         DebugLog.log(this, TAG, "showing Config screen")
+        showPeekBubble = initialConfig.showPeekBubble
+        // Recreated (a turn, a fold, a theme change): back on the screen that was up, not the list.
+        savedInstanceState?.getString(KEY_SCREEN)?.let { screen = decodeScreen(it, initialConfig.slots.size) }
         if (savedInstanceState == null && intent.getBooleanExtra(EXTRA_OPEN_CONFIG, false)) {
             readReveal(intent)
             entranceSeq = 1
@@ -145,7 +152,6 @@ class MainActivity : ComponentActivity() {
             val slots = remember { mutableStateListOf(*initialConfig.slots.toTypedArray()) }
             var useAllSlotsInDirectMode by remember { mutableStateOf(initialConfig.useAllSlotsInDirectMode) }
             var iconVariant by remember { mutableStateOf(initialConfig.iconVariant) }
-            var showPeekBubble by remember { mutableStateOf(initialConfig.showPeekBubble) }
             var peekBubbleReturns by remember { mutableStateOf(initialConfig.peekBubbleReturns) }
             var peekBubbleSize by remember { mutableStateOf(initialConfig.peekBubbleSize) }
             var peekBubbleAlpha by remember { mutableStateOf(initialConfig.peekBubbleAlpha) }
@@ -507,6 +513,12 @@ class MainActivity : ComponentActivity() {
         // Back in front (Recents, the launcher icon while Config was still open): the bubble is
         // the "Not App is in the background" handle, so it goes away while we're on screen.
         stopService(Intent(this, QuickPickPeekOverlayService::class.java))
+        showPeekBubble = ConfigStore.load(this).showPeekBubble
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(KEY_SCREEN, encodeScreen(screen))
     }
 
     override fun onStop() {
@@ -532,7 +544,24 @@ class MainActivity : ComponentActivity() {
     private companion object {
         const val TAG = "MainActivity"
         const val ENTRANCE_MS = 260
+        const val KEY_SCREEN = "screen"
     }
+}
+
+private fun encodeScreen(screen: Screen): String = when (screen) {
+    Screen.Config -> "config"
+    Screen.Settings -> "settings"
+    is Screen.EditSlot -> "edit:${screen.index}"
+    is Screen.NewSlot -> "new:${screen.type.name}"
+}
+
+/** Anything unknown or no longer valid (an index past the list) is the list itself. */
+private fun decodeScreen(value: String, slotCount: Int): Screen = when {
+    value == "settings" -> Screen.Settings
+    value.startsWith("edit:") -> value.removePrefix("edit:").toIntOrNull()?.takeIf { it in 0 until slotCount }
+        ?.let { Screen.EditSlot(it) } ?: Screen.Config
+    value.startsWith("new:") -> runCatching { Screen.NewSlot(SlotType.valueOf(value.removePrefix("new:"))) }.getOrDefault(Screen.Config)
+    else -> Screen.Config
 }
 
 @androidx.compose.runtime.Composable

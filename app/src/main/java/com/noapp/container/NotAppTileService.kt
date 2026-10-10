@@ -6,6 +6,7 @@ import android.graphics.drawable.Icon
 import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
+import android.widget.Toast
 import com.noapp.container.model.AppMode
 import com.noapp.container.data.ConfigStore
 import com.noapp.container.model.AppConfig
@@ -65,9 +66,13 @@ class NotAppTileService : TileService() {
                 .putExtra(EXTRA_TILE_TARGET, slot.targetKey)
                 .withLaunchToken(this)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            else -> ActionDispatcher.intentFor(this, slot) ?: launcherIntent()
+            // From a service a start needs its own task: below API 34 a URL or intent item without
+            // NEW_TASK throws (an app item's launch intent already has it).
+            else -> ActionDispatcher.intentFor(this, slot)?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) ?: launcherIntent()
         }
-        collapse(intent)
+        runCatching { collapse(intent) }.onFailure {
+            Toast.makeText(this, getString(R.string.toast_launch_failed, slot?.label.orEmpty(), it.message), Toast.LENGTH_SHORT).show()
+        }
     }
 
     /** The slot the settings point this tile at, or null for "act like the launcher icon". */

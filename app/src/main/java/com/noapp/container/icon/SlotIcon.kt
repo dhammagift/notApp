@@ -30,6 +30,7 @@ import com.noapp.container.model.ShortcutSlot
 import com.noapp.container.model.SlotType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.text.BreakIterator
 
 /**
  * No hand-authored icon set: a user-set [ShortcutSlot.customIcon] (emoji or short
@@ -45,10 +46,20 @@ fun iconBitmapFor(context: Context, slot: ShortcutSlot, sizePx: Int): Bitmap {
         appIconBitmapOrNull(context, slot.param, sizePx)?.let { return it }
     }
     return monogramBitmap(
-        text = slot.label.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+        text = monogramText(slot.label),
         colorHex = slot.color.ifBlank { ShortcutSlot.DEFAULT_COLOR },
         sizePx = sizePx
     )
+}
+
+/**
+ * The label's first character as the user sees it, not its first UTF-16 unit: "📚 Books" starts
+ * with a surrogate pair, and half of one drew as a box.
+ */
+internal fun monogramText(label: String): String {
+    if (label.isEmpty()) return "?"
+    val boundary = BreakIterator.getCharacterInstance().apply { setText(label) }.next()
+    return label.substring(0, boundary).uppercase()
 }
 
 /** Real app icon by package name, for the app picker rows — falls back to a "?" monogram. */
@@ -65,7 +76,11 @@ private fun appIconBitmapOrNull(context: Context, packageName: String, sizePx: I
 fun monogramBitmap(text: String, colorHex: String, sizePx: Int): Bitmap {
     val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bmp)
-    val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(colorHex) }
+    // A hand-edited or foreign config can hold any string here; a bad one used to throw on every
+    // draw of the list, so it falls back to the default colour instead.
+    val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = runCatching { Color.parseColor(colorHex) }.getOrElse { Color.parseColor(ShortcutSlot.DEFAULT_COLOR) }
+    }
     canvas.drawCircle(sizePx / 2f, sizePx / 2f, sizePx / 2f, bg)
     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE

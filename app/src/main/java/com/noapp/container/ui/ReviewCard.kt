@@ -43,9 +43,15 @@ import com.noapp.container.R
 import com.noapp.container.data.ReviewStore
 import com.noapp.container.icon.enabledLauncherComponent
 
-/** Opens the app's Play page, with the browser as the fallback for devices without the store. */
+private const val PLAY_PACKAGE = "gift.dhamma.noapp"
+
+/**
+ * Opens the app's Play page, with the browser as the fallback for devices without the store. Always
+ * the Play package: Not App Git and Droid (gift.dhamma.noapp.git / .droid) have no Play page of their
+ * own, and their own package name led to "not found".
+ */
 fun openStorePage(context: Context) {
-    val pkg = context.packageName
+    val pkg = PLAY_PACKAGE
     runCatching {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$pkg")))
     }.onFailure {
