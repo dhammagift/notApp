@@ -17,7 +17,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'gradle'
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
         with:
           packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
 
@@ -25,7 +25,7 @@ jobs:
         run: chmod +x gradlew && ./gradlew app:assembleRelease -Pdroid -PtestBuildTag=${{ github.sha }} -PbuildNumber=${{ github.run_number }}
 
       - name: Sign
-        uses: r0adkll/sign-android-release@v1
+        uses: r0adkll/sign-android-release@349ebdef58775b1e0d8099458af0816dc79b6407 # v1
         id: sign
         with:
           releaseDirectory: app/build/outputs/apk/release

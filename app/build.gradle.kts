@@ -89,6 +89,12 @@ android {
         buildConfig = true
     }
 
+    // CI's API-level check (build-release.yml): -PlintNewApiOnly runs lint for NewApi alone, a call
+    // above minSdk without a version check, which crashes on older phones. Plain lint is unchanged.
+    if (providers.gradleProperty("lintNewApiOnly").isPresent) {
+        lint { checkOnly += "NewApi" }
+    }
+
     // Roborazzi renders the real composables to PNGs on the JVM (Robolectric + Layoutlib) — the only
     // way to look at this UI without a device. The tests themselves only run with RENDER_SNAPSHOTS=1,
     // so CI stays untouched.
