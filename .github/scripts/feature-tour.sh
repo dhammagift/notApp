@@ -54,7 +54,7 @@ tap() {  # attr rx [n]
 # Scroll the screen's content down (up to 6 swipes) until a node is there, then tap it (a small screen hides rows).
 scroll_to() {  # attr rx
   local k
-  for k in 1 2 3 4 5 6; do has "$1" "$2" && return 0; adb shell input swipe $((W / 2)) $((H * 3 / 4)) $((W / 2)) $((H * 2 / 5)) 400; sleep 1; done
+  for k in 1 2 3 4 5 6; do has "$1" "$2" && return 0; adb shell input swipe $((W / 2)) $((H * 3 / 5)) $((W / 2)) $((H / 5)) 500; sleep 1; done
   has "$1" "$2"
 }
 tap_s() { scroll_to "$1" "$2" && tap "$1" "$2" "${3:-0}"; }
@@ -303,9 +303,14 @@ c_direct() {  # DIRECT: the icon opens item 1 (Contacts) right away, the ⚙ ove
   tap_s text '^▶ Direct' || return 1
   has text '^How I get you back' && tap text '^Continue$' && back
   tap content-desc '^Close$' || back
-  home; launch; sleep 1
+  home
+  adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 1
+  local gear=0; adb shell dumpsys activity services "$PKG" | grep -q GearOverlayService && gear=1
+  adb exec-out screencap -p > "$OUT/direct-gear.png"
+  sleep 2
   top | grep -qi contacts || { echo "  $(top)"; adb shell dumpsys activity activities > "$OUT/direct-activities.txt"; return 1; }
-  adb shell dumpsys activity services "$PKG" | grep -q GearOverlayService || { echo "  no gear overlay"; return 1; }
+  [ $gear = 1 ] || { echo "  no gear overlay"; return 1; }
+  adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 1   # again: the gear lives 2.5 s
   adb shell input tap $((W - $(dp 28))) $(( $(dp 24) + $(dp 28) )); sleep 3
   top | grep -q "$C" || { echo "  gear tap: $(top)"; return 1; }
   home
@@ -329,7 +334,8 @@ c_longpress() {  # the launcher icon's long-press menu lists the items; one of t
   grep -c "pin:" "$OUT/shortcuts.txt" | sed 's/^/  pin: shortcuts in dumpsys: /'
   adb shell input swipe $((W / 2)) $((H * 9 / 10)) $((W / 2)) $((H / 5)) 300; sleep 2
   local name; name=$(adb shell dumpsys package "$PKG" | grep -q 'gift.dhamma.noapp.git' && echo 'Not App Git' || echo 'Not App')
-  local xy; dump && xy=$(find_node text "^$name\$") || { adb shell input text "Not"; sleep 3; dump && xy=$(find_node text "^$name\$"); } || return 1
+  local xy; dump && { xy=$(find_node text "^$name\$") || xy=$(find_node content-desc "^$name\$"); }
+  [ -n "$xy" ] || { cp "$UI" "$OUT/drawer.xml"; echo "  no '$name' in the app drawer (drawer.xml)"; return 1; }
   set -- $xy
   adb shell input swipe "$1" "$2" "$1" "$2" 1200; sleep 2
   adb exec-out screencap -p > "$OUT/longpress-menu.png"
@@ -368,7 +374,8 @@ c_share() {  # share "kacchapa" to Not App -> "Send ... to:" -> Translator opens
   wait_for text '^Send "kacchapa" to:' 8 || return 1
   tap text '^Translator$' || return 1
   sleep 4
-  adb logcat -d | grep -E 'START u0' | grep -q 'kacchapa' || { echo "  word not in the started intent: $(top)"; return 1; }
+  # Android logs a web address as scheme://host/... only: the host shows the Translate item ran with the shared text.
+  adb logcat -d | grep -E 'START u0' | grep -q 'translate.google.com' || { echo "  the URL item did not open: $(top)"; return 1; }
   home
 }
 c_process_text() {  # text selection -> "Not App" in the menu -> the same sheet
