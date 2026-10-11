@@ -51,9 +51,16 @@ tap() {  # attr rx [n]
   set -- $xy
   adb shell input tap "$1" "$2"; sleep 2
 }
+# Scroll the screen's content down (up to 6 swipes) until a node is there, then tap it (a small screen hides rows).
+scroll_to() {  # attr rx
+  local k
+  for k in 1 2 3 4 5 6; do has "$1" "$2" && return 0; adb shell input swipe $((W / 2)) $((H * 3 / 4)) $((W / 2)) $((H * 2 / 5)) 400; sleep 1; done
+  has "$1" "$2"
+}
+tap_s() { scroll_to "$1" "$2" && tap "$1" "$2" "${3:-0}"; }
 # The checkable switch on the same line as a row's text (Compose: only the Switch is clickable, not the row).
 switch_of() {  # rx -> "x y checked"
-  dump || return 1
+  scroll_to text "$1" >/dev/null || return 1
   python3 - "$UI" "$1" <<'PY'
 import re, sys, xml.etree.ElementTree as ET
 nodes = list(ET.parse(sys.argv[1]).iter('node'))
@@ -171,14 +178,17 @@ c_add_url() {  # FAB -> URL -> the Translate preset ({{word}}) -> Save
   fresh
   tap content-desc '^Add item$' && tap content-desc '^URL$' || return 1
   wait_for text '^Edit ' 8 || return 1
-  tap text '^Translate$' && tap text '^Save$' || return 1
+  local xy; dump && xy=$(find_node text '^WhatsApp$') || return 1
+  set -- $xy
+  adb shell input swipe $((W - $(dp 20))) "$2" $(dp 20) "$2" 400; sleep 1   # the preset chips scroll sideways
+  tap text '^Translate$' && tap_s text '^Save$' || return 1
   wait_for text '^Translate$' 5 && has text '^URL · '
 }
 c_add_app() {  # FAB -> App: the picker opens by itself -> Camera -> Save
   fresh
   tap content-desc '^Add item$' && tap content-desc '^App$' || return 1
   wait_for text '^Choose app$' 8 && wait_for text '^Camera$' 20 || return 1
-  pick Camera && tap text '^Save$' || return 1
+  pick Camera && tap_s text '^Save$' || return 1
   wait_for text '^Camera$' 5
 }
 c_add_intent() {  # FAB -> Intent -> Choose activity… -> an app -> its first activity -> Save
@@ -188,7 +198,7 @@ c_add_intent() {  # FAB -> Intent -> Choose activity… -> an app -> its first a
   wait_for text '^Choose app$' 20 && pick Messages || return 1
   wait_for text '^Choose activity$' 8 || return 1
   tap text '\.[A-Z][A-Za-z]+$' 0 || return 1
-  tap text '^Save$' && wait_for text '^Intent · ' 5
+  tap_s text '^Save$' && wait_for text '^Intent · ' 5
 }
 c_edit() {  # open Translate, rename it, random emoji, Save
   fresh
@@ -198,7 +208,7 @@ c_edit() {  # open Translate, rename it, random emoji, Save
   for _ in $(seq 12); do adb shell input keyevent KEYCODE_DEL; done
   adb shell input text 'Translator'; sleep 1
   hide_kb
-  tap text '^Random$' && tap text '^Save$' || return 1
+  tap text '^Random$' && tap_s text '^Save$' || return 1
   wait_for text '^Translator$' 5
 }
 c_delete_undo() {  # swipe Clock away, Undo brings it back
@@ -226,6 +236,7 @@ c_reorder() {  # long-press drag Contacts to the top; fall back to the star if d
   return 1
 }
 c_list_launch() {  # LIST: the icon opens the sheet; an item opens its app
+  fresh
   home; launch
   top | grep -q QuickPickActivity || { echo "  $(top)"; return 1; }
   later; tap text '^Calendar$' || return 1
@@ -233,11 +244,13 @@ c_list_launch() {  # LIST: the icon opens the sheet; an item opens its app
   home
 }
 c_sheet_away() {  # swipe the sheet down: it closes (no floating button yet)
+  fresh
   launch; top | grep -q QuickPickActivity || return 1
   sheet_down
   ! top | grep -q QuickPickActivity
 }
 c_bubble() {  # floating button: on (with overlay granted), swipe away -> bubble, tap -> list, drag to ✕ -> gone
+  fresh
   adb shell appops set "$PKG" SYSTEM_ALERT_WINDOW allow
   settings || return 1
   set_switch '^Floating button in List and Mix modes$' on || return 1
@@ -254,12 +267,14 @@ c_bubble() {  # floating button: on (with overlay granted), swipe away -> bubble
   ! adb shell dumpsys activity services "$PKG" | grep -q QuickPickPeekOverlayService || { echo "  bubble still there"; return 1; }
 }
 c_bubble_stays_off() {  # N20: after ✕ with "bring back" off, the switch reads off, and stays off after another change
+  fresh
   settings || return 1
   [ "$(switch_of '^Floating button in List and Mix modes$' | cut -d' ' -f3)" = false ] || { echo "  floating button still on"; return 1; }
   tap text '^Dark$' && tap text '^System$' || return 1
   [ "$(switch_of '^Floating button in List and Mix modes$' | cut -d' ' -f3)" = false ]
 }
 c_recents() {  # recent apps row: usage access granted, the switch on, the sheet shows icons before the gear
+  fresh
   adb shell appops set "$PKG" GET_USAGE_STATS allow
   settings || return 1
   set_switch '^Recent apps in List and Mix modes$' on || return 1
@@ -267,10 +282,12 @@ c_recents() {  # recent apps row: usage access granted, the switch on, the sheet
   wait_for content-desc '^Configure$' 5
 }
 c_theme() {  # Dark, Light, System
+  fresh
   settings || return 1
   tap text '^Dark$' && adb exec-out screencap -p > "$OUT/theme-dark.png" && tap text '^Light$' && tap text '^System$'
 }
 c_icon_style() {  # pick Bolt, open the app: exactly the IconBolt alias is the launcher entry; then back to Default
+  fresh
   settings || return 1
   tap text '^Bolt$' || return 1
   launch; sleep 3
@@ -280,30 +297,33 @@ c_icon_style() {  # pick Bolt, open the app: exactly the IconBolt alias is the l
   settings && tap text '^Default$' && launch
 }
 c_direct() {  # DIRECT: the icon opens item 1 (Contacts) right away, the ⚙ overlay shows; tap it -> Config
+  fresh
   config && later
   tap text '^☰ List$' && wait_for text '^Choose mode$' 8 || return 1
-  tap text '^▶ Direct' || return 1
+  tap_s text '^▶ Direct' || return 1
   has text '^How I get you back' && tap text '^Continue$' && back
   tap content-desc '^Close$' || back
   home; launch; sleep 1
-  top | grep -qi contacts || { echo "  $(top)"; return 1; }
+  top | grep -qi contacts || { echo "  $(top)"; adb shell dumpsys activity activities > "$OUT/direct-activities.txt"; return 1; }
   adb shell dumpsys activity services "$PKG" | grep -q GearOverlayService || { echo "  no gear overlay"; return 1; }
   adb shell input tap $((W - $(dp 28))) $(( $(dp 24) + $(dp 28) )); sleep 3
   top | grep -q "$C" || { echo "  gear tap: $(top)"; return 1; }
   home
 }
 c_mix() {  # MIX: item 1 opens and the list comes up over it
+  fresh
   config && later
   tap text '^▶ Direct$' && wait_for text '^Choose mode$' 8 || return 1
-  tap text '^◫ Mix' || return 1
+  tap_s text '^◫ Mix' || return 1
   tap content-desc '^Close$' || back
   home; launch; sleep 2
   top | grep -q QuickPickActivity || { echo "  $(top)"; return 1; }
   adb shell dumpsys activity activities | grep -qi 'contacts' || { echo "  item 1 not under the list"; return 1; }
   back; home
-  config && tap text '^◫ Mix$' && tap text '^☰ List' && { tap content-desc '^Close$' || back; }
+  config && tap text '^◫ Mix$' && tap_s text '^☰ List' && { tap content-desc '^Close$' || back; }
 }
 c_longpress() {  # the launcher icon's long-press menu lists the items; one of them opens its app
+  fresh
   home
   adb shell dumpsys shortcut > "$OUT/shortcuts.txt" 2>&1
   grep -c "pin:" "$OUT/shortcuts.txt" | sed 's/^/  pin: shortcuts in dumpsys: /'
@@ -318,6 +338,7 @@ c_longpress() {  # the launcher icon's long-press menu lists the items; one of t
   home
 }
 c_pin() {  # pin one item to the home screen: the launcher's dialog, then a pinned shortcut in dumpsys
+  fresh
   config && later
   tap content-desc '^Pin to home screen$' 0 || return 1
   adb exec-out screencap -p > "$OUT/pin-dialog.png"
@@ -328,6 +349,7 @@ c_pin() {  # pin one item to the home screen: the launcher's dialog, then a pinn
   grep -A30 -i 'pinned' "$OUT/shortcuts-after-pin.txt" | grep -q 'pin:'
 }
 c_tile() {  # Quick Settings tile: add it, open the shade, tap it -> the list
+  fresh
   local comp="$PKG/$C.NotAppTileService"
   adb shell cmd statusbar add-tile "$comp" >/dev/null 2>&1 \
     || adb shell settings put secure sysui_qs_tiles "$(adb shell settings get secure sysui_qs_tiles | tr -d '\r'),custom($comp)"
@@ -341,6 +363,7 @@ c_tile() {  # Quick Settings tile: add it, open the shade, tap it -> the list
   back; home
 }
 c_share() {  # share "kacchapa" to Not App -> "Send ... to:" -> Translator opens the URL with the word in it
+  fresh
   adb shell am start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT kacchapa -n "$PKG/$C.MainActivity" >/dev/null
   wait_for text '^Send "kacchapa" to:' 8 || return 1
   tap text '^Translator$' || return 1
@@ -349,13 +372,15 @@ c_share() {  # share "kacchapa" to Not App -> "Send ... to:" -> Translator opens
   home
 }
 c_process_text() {  # text selection -> "Not App" in the menu -> the same sheet
+  fresh
   adb shell am start -a android.intent.action.PROCESS_TEXT -t text/plain --es android.intent.extra.PROCESS_TEXT kacchapa -n "$PKG/$C.ProcessTextActivity" >/dev/null
   wait_for text '^Send "kacchapa" to:' 8 || return 1
   back
 }
 c_backup_restore() {  # Backup to Downloads, a bad file is refused, the real backup restores
+  fresh
   settings || return 1
-  tap text '^Backup$' || return 1
+  tap_s text '^Backup$' || return 1
   sleep 3; adb exec-out screencap -p > "$OUT/backup-picker.png"
   tap text '(?i)^save$' || return 1
   sleep 3
@@ -365,13 +390,13 @@ c_backup_restore() {  # Backup to Downloads, a bad file is refused, the real bac
   echo '{"hello":"world"}' > /tmp/bad.json; adb push /tmp/bad.json /sdcard/Download/not-a-backup.json >/dev/null
   adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/not-a-backup.json >/dev/null
   local order; order=$(config >/dev/null; row_order); settings
-  tap text '^Restore$' || return 1
+  tap_s text '^Restore$' || return 1
   sleep 3
   if ! has text '^not-a-backup.json$'; then tap content-desc '(?i)show roots' && tap text '^Downloads$'; fi
   tap text '^not-a-backup.json$' || return 1
   sleep 2
   [ "$(config >/dev/null; row_order)" = "$order" ] || { echo "  list changed after a bad file"; return 1; }
-  settings && tap text '^Restore$' || return 1
+  settings && tap_s text '^Restore$' || return 1
   sleep 3
   if ! has text '^noapp-config.json$'; then tap content-desc '(?i)show roots' && tap text '^Downloads$'; fi
   tap text '^noapp-config.json$' || return 1
@@ -379,6 +404,7 @@ c_backup_restore() {  # Backup to Downloads, a bad file is refused, the real bac
   [ "$(config >/dev/null; row_order)" = "$order" ]
 }
 c_resize_editor() {  # N19: a size change (a foldable) in the editor keeps the editor and the unsaved text
+  fresh
   config && later
   tap text '^Calendar$' && wait_for text '^Edit ' 8 || return 1
   tap_field '^Calendar$' || return 1
