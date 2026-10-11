@@ -136,20 +136,28 @@ case_run() {  # NN name function
 }
 
 APPS='^(Calendar|Clock|Contacts)$'
-# In the app pickers: type the name into "Search apps" (a small screen shows five apps), tap the row, clear the search.
+# In the app pickers: scroll the list until the app's row is on screen (a small screen shows five), then tap it.
 pick() {
-  tap_field '' 2>/dev/null || tap text '^Search apps$' || return 1
-  adb shell input text "$1"; sleep 2
-  hide_kb
-  tap text "^$1\$" || return 1
-  if has text "^$1\$"; then   # a multi-select picker stays open: clear the search for the next one
-    tap_field "$1" && adb shell input keyevent KEYCODE_MOVE_END && for _ in $(seq ${#1}); do adb shell input keyevent KEYCODE_DEL; done
-    hide_kb
-  fi
-  return 0
+  local k
+  for k in 1 2 3 4 5 6 7 8; do
+    has text "^$1\$" && { tap text "^$1\$"; return $?; }
+    adb shell input swipe $((W / 2)) $((H * 7 / 10)) $((W / 2)) $((H * 4 / 10)) 400; sleep 1
+  done
+  for k in 1 2 3 4 5 6 7 8; do   # past it: back up
+    has text "^$1\$" && { tap text "^$1\$"; return $?; }
+    adb shell input swipe $((W / 2)) $((H * 4 / 10)) $((W / 2)) $((H * 7 / 10)) 400; sleep 1
+  done
+  echo "  not in the picker: $1"; return 1
 }
 # Every case after the first starts on the Config screen, whatever the one before left open.
-fresh() { home; config && later; }
+fresh() {
+  local k
+  for k in 1 2 3; do   # a dialog left open by a failed case: close it
+    has content-desc '^Add item$' && break
+    adb shell input keyevent KEYCODE_BACK; sleep 1
+  done
+  home; config && later
+}
 
 c_fill() {  # fresh install: the Config screen, then Fill with three apps
   launch
