@@ -321,6 +321,48 @@ jobs:
           path: out/
           retention-days: 14
 
+  # Every feature driven the way a person uses it (.github/scripts/feature-tour.sh): fill, add/edit/delete,
+  # drag to reorder, the three modes, the sheet and the floating button, recent apps, icon styles, the long-press
+  # menu, pin to home, the Quick Settings tile, share and text selection, backup/restore, a size change in the
+  # editor. One video per case in the artifact. One emulator (Android 9: most of the review fixes are for old
+  # Androids); test builds only, like first-launch.
+  feature-tour:
+    needs: build
+    if: github.ref_type != 'tag' && (github.event_name != 'workflow_dispatch' || github.event.inputs.version == '')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get the APKs from the build
+        uses: actions/download-artifact@v4
+        with:
+          name: NotApp-${{ github.sha }}${{ inputs.alwaysAskForReview && '-TEST-always-review' || '' }}
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Feature tour on API 28
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 28
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: bash .github/scripts/feature-tour.sh NotApp.apk gift.dhamma.noapp
+
+      - name: Upload videos and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: feature-tour-api28
+          path: out/tour/
+          retention-days: 14
+
   # The screens drawn on the JVM (Roborazzi, see ScreenSnapshots*), so a UI change can be looked at
   # straight from the run's artifacts. Test builds only, same as first-launch.
   snapshots:
