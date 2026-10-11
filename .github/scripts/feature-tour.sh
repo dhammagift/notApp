@@ -321,7 +321,12 @@ c_direct() {  # DIRECT: the icon opens item 1 (Contacts) right away, the ⚙ ove
   sleep 2
   top | grep -qi contacts || { echo "  $(top)"; adb shell dumpsys activity activities > "$OUT/direct-activities.txt"; return 1; }
   [ $gear = 1 ] || { echo "  no gear overlay"; return 1; }
-  drawer_tap; sleep 0.5   # again: the gear lives 2.5 s (top right, under the status bar)
+  # Again, and straight at the gear: it lives 2.5 s, and tap() itself waits 2 s after its touch.
+  home
+  adb shell input swipe $((W / 2)) $((H * 9 / 10)) $((W / 2)) $((H / 5)) 300; sleep 2
+  has text 'predicted apps' && tap content-desc '^Close$'
+  local xy; dump && { xy=$(find_node text '^Not App$') || xy=$(find_node content-desc '^Not App$'); } || return 1
+  set -- $xy; adb shell input tap "$1" "$2"; sleep 1
   adb shell input tap $((W - $(dp 29))) $(dp 76); sleep 3
   top | grep -q "$C" || { echo "  gear tap: $(top)"; return 1; }
   home
