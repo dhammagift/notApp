@@ -54,7 +54,7 @@ tap() {  # attr rx [n]
 # Scroll the screen's content down (up to 6 swipes) until a node is there, then tap it (a small screen hides rows).
 scroll_to() {  # attr rx
   local k
-  for k in 1 2 3 4 5 6; do has "$1" "$2" && return 0; adb shell input swipe $((W / 2)) $((H * 3 / 5)) $((W / 2)) $((H / 5)) 500; sleep 1; done
+  for k in 1 2 3 4 5 6; do has "$1" "$2" && return 0; adb shell input swipe $((W / 2)) $((H * 3 / 5)) $((W / 2)) $((H / 5)) 800; sleep 2; done
   has "$1" "$2"
 }
 tap_s() { scroll_to "$1" "$2" && tap "$1" "$2" "${3:-0}"; }
@@ -144,15 +144,16 @@ case_run() {  # NN name function
 
 APPS='^(Calendar|Clock|Contacts)$'
 # In the app pickers: scroll the list until the app's row is on screen (a small screen shows five), then tap it.
+# Slow strokes and a pause after each: a tap while the list still glides only stops it (no row gets picked).
 pick() {
   local k
   for k in 1 2 3 4 5 6 7 8; do
     has text "^$1\$" && { tap text "^$1\$"; return $?; }
-    adb shell input swipe $((W / 2)) $((H * 7 / 10)) $((W / 2)) $((H * 4 / 10)) 400; sleep 1
+    adb shell input swipe $((W / 2)) $((H * 7 / 10)) $((W / 2)) $((H * 4 / 10)) 800; sleep 2
   done
   for k in 1 2 3 4 5 6 7 8; do   # past it: back up
     has text "^$1\$" && { tap text "^$1\$"; return $?; }
-    adb shell input swipe $((W / 2)) $((H * 4 / 10)) $((W / 2)) $((H * 7 / 10)) 400; sleep 1
+    adb shell input swipe $((W / 2)) $((H * 4 / 10)) $((W / 2)) $((H * 7 / 10)) 800; sleep 2
   done
   echo "  not in the picker: $1"; return 1
 }
