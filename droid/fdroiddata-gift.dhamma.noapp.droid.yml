@@ -1,6 +1,6 @@
 # Recipe for F-Droid: goes to gitlab.com/fdroid/fdroiddata as metadata/gift.dhamma.noapp.droid.yml
 # (merge request). Kept here so it lives next to the code it builds; not used by our own CI.
-# Builds v0.6.6 (commit 2a82393). Formatted as fdroid rewritemeta writes it (their CI checks that).
+# Builds v0.6.6 (commit 2a82393) and v0.6.7 (commit f1da1bb). Formatted as fdroid rewritemeta writes it (their CI checks that).
 Categories:
   - System
 License: MIT
@@ -25,9 +25,18 @@ Builds:
     gradleprops:
       - droid
 
+  - versionName: 0.6.7
+    versionCode: 607
+    commit: f1da1bbee6e218b35740b4dcdeda540de880d2f4
+    subdir: app
+    gradle:
+      - yes
+    gradleprops:
+      - droid
+
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v\d+\.\d+\.\d+$
 UpdateCheckData: app/build.gradle.kts|val appVersionCode = (\d+)|app/build.gradle.kts|val
   appVersion = "(.*)"
-CurrentVersion: 0.6.6
-CurrentVersionCode: 606
+CurrentVersion: 0.6.7
+CurrentVersionCode: 607
