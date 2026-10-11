@@ -136,36 +136,54 @@ case_run() {  # NN name function
 }
 
 APPS='^(Calendar|Clock|Contacts)$'
+# In the app pickers: type the name into "Search apps" (a small screen shows five apps), tap the row, clear the search.
+pick() {
+  tap_field '' 2>/dev/null || tap text '^Search apps$' || return 1
+  adb shell input text "$1"; sleep 2
+  hide_kb
+  tap text "^$1\$" || return 1
+  if has text "^$1\$"; then   # a multi-select picker stays open: clear the search for the next one
+    tap_field "$1" && adb shell input keyevent KEYCODE_MOVE_END && for _ in $(seq ${#1}); do adb shell input keyevent KEYCODE_DEL; done
+    hide_kb
+  fi
+  return 0
+}
+# Every case after the first starts on the Config screen, whatever the one before left open.
+fresh() { home; config && later; }
 
 c_fill() {  # fresh install: the Config screen, then Fill with three apps
   launch
   wait_for text '^Item 1$' 10 || return 1
   tap text '^Fill$' && wait_for text '^Fill slots from apps$' 8 || return 1
   wait_for text '^Calendar$' 20 || return 1
-  tap text '^Calendar$' && tap text '^Clock$' && tap text '^Contacts$' && tap text '^Fill 3 slots$' || return 1
+  pick Calendar && pick Clock && pick Contacts && tap text '^Fill 3 slots$' || return 1
   wait_for text '^Calendar$' 5 && has text '^Clock$' && has text '^Contacts$'
 }
 c_add_url() {  # FAB -> URL -> the Translate preset ({{word}}) -> Save
-  later; tap content-desc '^Add item$' && tap content-desc '^URL$' || return 1
+  fresh
+  tap content-desc '^Add item$' && tap content-desc '^URL$' || return 1
   wait_for text '^Edit ' 8 || return 1
   tap text '^Translate$' && tap text '^Save$' || return 1
   wait_for text '^Translate$' 5 && has text '^URL · '
 }
 c_add_app() {  # FAB -> App: the picker opens by itself -> Camera -> Save
+  fresh
   tap content-desc '^Add item$' && tap content-desc '^App$' || return 1
   wait_for text '^Choose app$' 8 && wait_for text '^Camera$' 20 || return 1
-  tap text '^Camera$' && tap text '^Save$' || return 1
+  pick Camera && tap text '^Save$' || return 1
   wait_for text '^Camera$' 5
 }
 c_add_intent() {  # FAB -> Intent -> Choose activity… -> an app -> its first activity -> Save
+  fresh
   tap content-desc '^Add item$' && tap content-desc '^Intent$' || return 1
   wait_for text '^Choose activity' 8 && tap text '^Choose activity' || return 1
-  wait_for text '^Messages$' 20 && tap text '^Messages$' || return 1
+  wait_for text '^Choose app$' 20 && pick Messages || return 1
   wait_for text '^Choose activity$' 8 || return 1
   tap text '\.[A-Z][A-Za-z]+$' 0 || return 1
   tap text '^Save$' && wait_for text '^Intent · ' 5
 }
 c_edit() {  # open Translate, rename it, random emoji, Save
+  fresh
   tap text '^Translate$' && wait_for text '^Edit ' 8 || return 1
   tap_field '^Translate$' || return 1
   adb shell input keyevent KEYCODE_MOVE_END
@@ -176,6 +194,7 @@ c_edit() {  # open Translate, rename it, random emoji, Save
   wait_for text '^Translator$' 5
 }
 c_delete_undo() {  # swipe Clock away, Undo brings it back
+  fresh
   local xy; dump && xy=$(find_node text '^Clock$') || return 1
   set -- $xy
   adb shell input swipe $(dp 40) "$2" $((W - $(dp 40))) "$2" 300; sleep 2
@@ -183,6 +202,7 @@ c_delete_undo() {  # swipe Clock away, Undo brings it back
   tap text '^Undo$' && wait_for text '^Clock$' 5
 }
 c_reorder() {  # long-press drag Contacts to the top; fall back to the star if draganddrop is not there
+  fresh
   local before after xy y1
   before=$(row_order); echo "  before: $before"
   dump && xy=$(find_node text '^Contacts$') && y1=$(find_node text '^Calendar$' | cut -d' ' -f2) || return 1
