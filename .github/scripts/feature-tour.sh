@@ -51,10 +51,11 @@ tap() {  # attr rx [n]
   set -- $xy
   adb shell input tap "$1" "$2"; sleep 2
 }
-# Scroll the screen's content down (up to 6 swipes) until a node is there, then tap it (a small screen hides rows).
+# Scroll the screen's content down, then back up (up to 6 swipes each way) until a node is there, then tap it (a small screen hides rows).
 scroll_to() {  # attr rx
   local k
   for k in 1 2 3 4 5 6; do has "$1" "$2" && return 0; adb shell input swipe $((W / 2)) $((H * 3 / 5)) $((W / 2)) $((H / 5)) 800; sleep 2; done
+  for k in 1 2 3 4 5 6; do has "$1" "$2" && return 0; adb shell input swipe $((W / 2)) $((H / 5)) $((W / 2)) $((H * 3 / 5)) 800; sleep 2; done
   has "$1" "$2"
 }
 tap_s() { scroll_to "$1" "$2" && tap "$1" "$2" "${3:-0}"; }
@@ -116,6 +117,13 @@ top() { adb shell dumpsys activity activities | grep -m1 -E "mResumedActivity|to
 home() { adb shell input keyevent KEYCODE_HOME; sleep 2; }
 back() { adb shell input keyevent KEYCODE_BACK; sleep 2; }
 launch() { adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 5; }
+drawer_tap() {  # open Not App from the launcher's app drawer, as a thumb does
+  local name='Not App'; [ "$PKG" = gift.dhamma.noapp.git ] && name='Not App Git'
+  home
+  adb shell input swipe $((W / 2)) $((H * 9 / 10)) $((W / 2)) $((H / 5)) 300; sleep 2
+  has text 'predicted apps' && tap content-desc '^Close$'
+  tap text "^$name\$" || tap content-desc "^$name\$"
+}
 config() { adb shell am start -n "$PKG/$C.MainActivity" --ez extra_open_config true >/dev/null; sleep 4; }
 settings() { config && tap content-desc '^Settings$' && wait_for text '^Settings$' 8; }
 # Dismiss what can stand in the way: the review card (always on in a review-test build) and a snackbar.
@@ -217,8 +225,11 @@ c_delete_undo() {  # swipe Clock away, Undo brings it back
   local xy; dump && xy=$(find_node text '^Clock$') || return 1
   set -- $xy
   adb shell input swipe $(dp 40) "$2" $((W - $(dp 40))) "$2" 300; sleep 2
-  has text '^Removed "Clock"' || { echo "  no Removed snackbar"; return 1; }
-  tap text '^Undo$' && wait_for text '^Clock$' 5
+  dump && find_node text '^Removed "Clock"' >/dev/null || { echo "  no Removed snackbar"; return 1; }
+  xy=$(find_node text '^Undo$') || { echo "  no Undo"; return 1; }
+  set -- $xy; adb shell input tap "$1" "$2"; sleep 2   # straight away: the snackbar lives 4 s
+  wait_for text '^Clock$' 5 || return 1
+  has text '^Contacts$' || { echo "  the swipe took Contacts too"; return 1; }
 }
 c_reorder() {  # long-press drag Contacts to the top; fall back to the star if draganddrop is not there
   fresh
@@ -271,7 +282,7 @@ c_bubble_stays_off() {  # N20: after ✕ with "bring back" off, the switch reads
   fresh
   settings || return 1
   [ "$(switch_of '^Floating button in List and Mix modes$' | cut -d' ' -f3)" = false ] || { echo "  floating button still on"; return 1; }
-  tap text '^Dark$' && tap text '^System$' || return 1
+  tap_s text '^Dark$' && tap_s text '^System$' || return 1
   [ "$(switch_of '^Floating button in List and Mix modes$' | cut -d' ' -f3)" = false ]
 }
 c_recents() {  # recent apps row: usage access granted, the switch on, the sheet shows icons before the gear
@@ -304,15 +315,14 @@ c_direct() {  # DIRECT: the icon opens item 1 (Contacts) right away, the ⚙ ove
   tap_s text '^▶ Direct' || return 1
   has text '^How I get you back' && tap text '^Continue$' && back
   tap content-desc '^Close$' || back
-  home
-  adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 1
+  drawer_tap; sleep 0.5
   local gear=0; adb shell dumpsys activity services "$PKG" | grep -q GearOverlayService && gear=1
   adb exec-out screencap -p > "$OUT/direct-gear.png"
   sleep 2
   top | grep -qi contacts || { echo "  $(top)"; adb shell dumpsys activity activities > "$OUT/direct-activities.txt"; return 1; }
   [ $gear = 1 ] || { echo "  no gear overlay"; return 1; }
-  adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 1   # again: the gear lives 2.5 s
-  adb shell input tap $((W - $(dp 28))) $(( $(dp 24) + $(dp 28) )); sleep 3
+  drawer_tap; sleep 0.5   # again: the gear lives 2.5 s (top right, under the status bar)
+  adb shell input tap $((W - $(dp 29))) $(dp 76); sleep 3
   top | grep -q "$C" || { echo "  gear tap: $(top)"; return 1; }
   home
 }
@@ -322,7 +332,7 @@ c_mix() {  # MIX: item 1 opens and the list comes up over it
   tap text '^▶ Direct$' && wait_for text '^Choose mode$' 8 || return 1
   tap_s text '^◫ Mix' || return 1
   tap content-desc '^Close$' || back
-  home; launch; sleep 2
+  drawer_tap; sleep 4
   top | grep -q QuickPickActivity || { echo "  $(top)"; return 1; }
   adb shell dumpsys activity activities | grep -qi 'contacts' || { echo "  item 1 not under the list"; return 1; }
   back; home
@@ -342,8 +352,8 @@ c_longpress() {  # the launcher icon's long-press menu lists the items; one of t
   set -- $xy
   adb shell input swipe "$1" "$2" "$1" "$2" 1200; sleep 2
   adb exec-out screencap -p > "$OUT/longpress-menu.png"
-  tap text '^Clock$' || return 1
-  sleep 3; top | grep -qi clock || { echo "  $(top)"; return 1; }
+  tap text '^Calendar$' || return 1
+  sleep 3; top | grep -qi calendar || { echo "  $(top)"; return 1; }
   home
 }
 c_pin() {  # pin one item to the home screen: the launcher's dialog, then a pinned shortcut in dumpsys
