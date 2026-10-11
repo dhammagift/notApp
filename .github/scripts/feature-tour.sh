@@ -352,7 +352,7 @@ c_longpress() {  # the launcher icon's long-press menu lists the items; one of t
   set -- $xy
   adb shell input swipe "$1" "$2" "$1" "$2" 1200; sleep 2
   adb exec-out screencap -p > "$OUT/longpress-menu.png"
-  tap text '^Calendar$' || return 1
+  tap text '^Calendar$' -1 || return 1   # the last one: the menu sits over the drawer, whose Calendar icon has the same label
   sleep 3; top | grep -qi calendar || { echo "  $(top)"; return 1; }
   home
 }
@@ -402,7 +402,8 @@ c_backup_restore() {  # Backup to Downloads, a bad file is refused, the real bac
   settings || return 1
   tap_s text '^Backup$' || return 1
   sleep 3; adb exec-out screencap -p > "$OUT/backup-picker.png"
-  tap text '(?i)^save$' || return 1
+  # An empty Downloads folder animates, and uiautomator then cannot read the screen: the button's place instead.
+  tap text '(?i)^save$' || adb shell input tap $((W * 85 / 100)) $((H * 955 / 1000)); sleep 2
   sleep 3
   adb shell ls /sdcard/Download/ | grep -q noapp-config || { echo "  no backup file"; return 1; }
   adb shell cat /sdcard/Download/noapp-config.json > "$OUT/backup.json"
