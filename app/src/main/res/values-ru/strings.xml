@@ -58,6 +58,7 @@
     <string name="toast_import_not_config">Это не файл настроек Not App. Ничего не изменено.</string>
     <string name="toast_pin_unsupported">Ваш лаунчер не поддерживает закрепление ярлыков</string>
     <string name="toast_launch_failed">Не удалось запустить \"%1$s\": %2$s</string>
+    <string name="toast_no_app_for_link">Нет приложения, чтобы открыть эту ссылку</string>
 
     <string name="common_cancel">Отмена</string>
     <string name="common_save">Сохранить</string>

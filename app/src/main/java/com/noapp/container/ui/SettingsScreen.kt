@@ -1,6 +1,8 @@
 package com.noapp.container.ui
 
 import android.view.HapticFeedbackConstants
+import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -103,6 +105,16 @@ private const val GITHUB_RELEASES_URL = "$GITHUB_URL/releases/latest"
 
 // TODO: replace with a real hosted privacy policy page before publishing to the Play Store
 private const val PRIVACY_POLICY_URL = "https://github.com/dhammagift/notApp/blob/main/PRIVACY.md"
+
+// A phone without a browser (or a ROM without the per-app language screen) has nothing to
+// handle these intents; startActivity would throw and take Settings down with it.
+private fun openLink(context: Context, intent: Intent) {
+    try {
+        context.startActivity(intent)
+    } catch (_: ActivityNotFoundException) {
+        Toast.makeText(context, context.getString(R.string.toast_no_app_for_link), Toast.LENGTH_SHORT).show()
+    }
+}
 
 @Composable
 private fun IconVariant.displayName(): String = when (id) {
@@ -369,7 +381,8 @@ fun SettingsScreen(
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.settings_language)) },
                     modifier = Modifier.clickable {
-                        context.startActivity(
+                        openLink(
+                            context,
                             Intent(AndroidSettings.ACTION_APP_LOCALE_SETTINGS, Uri.parse("package:${context.packageName}"))
                         )
                     }
@@ -523,7 +536,7 @@ fun SettingsScreen(
                 headlineContent = { Text(stringResource(R.string.settings_privacy_policy)) },
                 leadingContent = { Icon(Icons.Default.Lock, contentDescription = null) },
                 modifier = Modifier.clickable {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_POLICY_URL)))
+                    openLink(context, Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_POLICY_URL)))
                 }
             )
             HorizontalDivider()
@@ -546,14 +559,14 @@ fun SettingsScreen(
             ListItem(
                 headlineContent = { Text(stringResource(R.string.settings_source_code)) },
                 modifier = Modifier.clickable {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_URL)))
+                    openLink(context, Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_URL)))
                 }
             )
             ListItem(
                 headlineContent = { Text(stringResource(R.string.settings_latest_release)) },
                 leadingContent = { Icon(painterResource(R.drawable.ic_github), contentDescription = null) },
                 modifier = Modifier.clickable {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_RELEASES_URL)))
+                    openLink(context, Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_RELEASES_URL)))
                 }
             )
             ListItem(

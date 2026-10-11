@@ -59,6 +59,7 @@
     <string name="toast_import_not_config">This file is not a Not App backup. Nothing was changed.</string>
     <string name="toast_pin_unsupported">Your launcher doesn\'t support pinning shortcuts</string>
     <string name="toast_launch_failed">Couldn\'t launch \"%1$s\": %2$s</string>
+    <string name="toast_no_app_for_link">No app to open this link</string>
 
     <string name="common_cancel">Cancel</string>
     <string name="common_save">Save</string>
