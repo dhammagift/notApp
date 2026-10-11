@@ -1,0 +1,6 @@
+* Swiping a row away removes only that row, and Undo brings back the right one
+* Restore refuses a file that is not a Not App backup instead of wiping the list
+* Home-screen shortcuts keep their item after the list is reordered
+* Floating button: easier to drop on the ✕, no flash when it goes
+* Fixes for Android 7–9, the Quick Settings tile with a link, and edits kept through a rotation
+* About 3 MB smaller
