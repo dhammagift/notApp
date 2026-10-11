@@ -44,7 +44,9 @@ private const val MARGIN_DP = 20
 private const val TAP_SLOP_DP = 8
 private const val TRASH_SIZE_DP = 64
 private const val TRASH_BOTTOM_MARGIN_DP = 32
-private const val TRASH_ACTIVATE_RADIUS_DP = 56
+// How near the target counts as "on it": the finger or the button's centre within this of the target's centre. 56 (the two
+// circles just touching) took a couple of tries to hit (owner, 2026-10-11); the usual drop zones are generous.
+private const val TRASH_ACTIVATE_RADIUS_DP = 88
 private const val TRASH_GROW = 1.25f
 // Much higher than OverScroller's own default (0.015f) — releasing the bubble should read as
 // a soft, short settle, not an actual throw; combined with capping the velocity fed into it
@@ -387,8 +389,9 @@ class QuickPickPeekOverlayService : Service() {
                         val bubbleCenterX = params.x + sizePx / 2f
                         val bubbleCenterY = params.y + sizePx / 2f
                         val (trashCx, trashCy) = trashCenter() ?: (Float.NaN to Float.NaN)
-                        val nowOverTrash = !trashCx.isNaN() &&
-                            hypot((bubbleCenterX - trashCx).toDouble(), (bubbleCenterY - trashCy).toDouble()) < trashActivateRadiusPx
+                        val nowOverTrash = !trashCx.isNaN() && (
+                            hypot((bubbleCenterX - trashCx).toDouble(), (bubbleCenterY - trashCy).toDouble()) < trashActivateRadiusPx ||
+                                hypot((event.rawX - trashCx).toDouble(), (event.rawY - trashCy).toDouble()) < trashActivateRadiusPx)
                         if (nowOverTrash != overTrash) {
                             overTrash = nowOverTrash
                             if (overTrash) view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
