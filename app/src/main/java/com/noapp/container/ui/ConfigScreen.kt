@@ -651,10 +651,16 @@ fun ConfigScreen(
                     val currentIndex by rememberUpdatedState(index)
                     val currentOnSlotsChanged by rememberUpdatedState(onSlotsChanged)
                     val swipeRemove by rememberUpdatedState {
+                        // Material3 can confirm one swipe twice, and until the list resyncs this row still sits at
+                        // its old index over the new list: by index, the second call took the next row with it (and
+                        // Undo then brought back that one, not this). So: this row's own slot, and only while it is there.
+                        val at = if (slots.getOrNull(index)?.copy(id = slot.id) == slot) index
+                            else slots.indexOfFirst { it.copy(id = slot.id) == slot }
+                        if (at < 0) return@rememberUpdatedState
                         view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                         removeWithUndo(
                             previous = slots,
-                            updated = slots.filterIndexed { i, _ -> i != index }.mapIndexed { i, s -> s.copy(id = i) },
+                            updated = slots.filterIndexed { i, _ -> i != at }.mapIndexed { i, s -> s.copy(id = i) },
                             message = context.getString(R.string.config_removed_named, slot.label.ifBlank { positionLabel })
                         )
                     }
