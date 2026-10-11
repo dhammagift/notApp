@@ -335,6 +335,8 @@ c_longpress() {  # the launcher icon's long-press menu lists the items; one of t
   grep -c "pin:" "$OUT/shortcuts.txt" | sed 's/^/  pin: shortcuts in dumpsys: /'
   adb shell input swipe $((W / 2)) $((H * 9 / 10)) $((W / 2)) $((H / 5)) 300; sleep 2
   local name; name=$(adb shell dumpsys package "$PKG" | grep -q 'gift.dhamma.noapp.git' && echo 'Not App Git' || echo 'Not App')
+  # The Pixel launcher's first open of the drawer lays a "Your predicted apps" tip over it, and the dump sees only the tip.
+  has text 'predicted apps' && tap content-desc '^Close$'
   local xy; dump && { xy=$(find_node text "^$name\$") || xy=$(find_node content-desc "^$name\$"); }
   [ -n "$xy" ] || { cp "$UI" "$OUT/drawer.xml"; echo "  no '$name' in the app drawer (drawer.xml)"; return 1; }
   set -- $xy
