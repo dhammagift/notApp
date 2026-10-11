@@ -3,6 +3,8 @@ package com.noapp.container.shortcuts
 import com.noapp.container.ui.OverlayMotion
 import android.view.animation.OvershootInterpolator
 import android.view.HapticFeedbackConstants
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.app.Service
 import android.content.Context
@@ -43,6 +45,7 @@ private const val TAP_SLOP_DP = 8
 private const val TRASH_SIZE_DP = 64
 private const val TRASH_BOTTOM_MARGIN_DP = 32
 private const val TRASH_ACTIVATE_RADIUS_DP = 56
+private const val TRASH_GROW = 1.25f
 // Much higher than OverScroller's own default (0.015f) — releasing the bubble should read as
 // a soft, short settle, not an actual throw; combined with capping the velocity fed into it
 // (see MAX_FLING_VELOCITY_DP_PER_S), even a hard flick only ever travels a small distance.
@@ -135,6 +138,10 @@ class QuickPickPeekOverlayService : Service() {
         val marginPx = (MARGIN_DP * density).toInt()
         val tapSlopPx = (TAP_SLOP_DP * density)
         val trashSizePx = (TRASH_SIZE_DP * density).toInt()
+        // The target's window is a little larger than the circle at rest, so the circle can grow when the button is over
+        // it: in a window of its own size the grown circle was cut into a square.
+        val trashWindowPx = (trashSizePx * TRASH_GROW).toInt()
+        val trashRest = trashSizePx / trashWindowPx.toFloat()
         val trashActivateRadiusPx = TRASH_ACTIVATE_RADIUS_DP * density
         val dockZonePx = (DOCK_ZONE_DP * density).toInt()
         val dockPeekPx = (sizePx * config.peekBubbleDockPeek).toInt().coerceAtLeast(1)
@@ -194,8 +201,8 @@ class QuickPickPeekOverlayService : Service() {
         // Drop target for drag-to-remove, added only while an actual drag is in progress
         // (not for a plain tap) — bottom-center, same spot Android's own "remove" targets use.
         val trashParams = WindowManager.LayoutParams(
-            trashSizePx,
-            trashSizePx,
+            trashWindowPx,
+            trashWindowPx,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -213,7 +220,7 @@ class QuickPickPeekOverlayService : Service() {
         fun trashCenter(): Pair<Float, Float>? {
             val t = trashView ?: return null
             t.getLocationOnScreen(trashLocation)
-            return (trashLocation[0] + trashSizePx / 2f) to (trashLocation[1] + trashSizePx / 2f)
+            return (trashLocation[0] + trashWindowPx / 2f) to (trashLocation[1] + trashWindowPx / 2f)
         }
 
         var downRawX = 0f
@@ -232,8 +239,25 @@ class QuickPickPeekOverlayService : Service() {
         fun removeTrashView() {
             val t = trashView ?: return
             trashView = null
-            t.animate().alpha(0f).scaleX(0.5f).scaleY(0.5f).setDuration(TRASH_OUT_MS)
-                .withEndAction { runCatching { wm.removeView(t) } }
+            // Faded as a window (LayoutParams.alpha), not only as a view: with only the view at alpha 0, removing the
+            // window showed the full target again for a frame (owner, 2026-10-11, frame by frame on a phone).
+            t.animate().cancel()
+            val lp = WindowManager.LayoutParams().apply { copyFrom(trashParams) }
+            val fromScale = t.scaleX
+            ValueAnimator.ofFloat(1f, 0f).apply {
+                duration = TRASH_OUT_MS
+                addUpdateListener { a ->
+                    val v = a.animatedValue as Float
+                    lp.alpha = v
+                    t.scaleX = fromScale * (0.5f + 0.5f * v)
+                    t.scaleY = t.scaleX
+                    runCatching { wm.updateViewLayout(t, lp) }
+                }
+                addListener(object : AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: Animator) { runCatching { wm.removeView(t) } }
+                })
+                start()
+            }
         }
 
         fun persistPosition() {
@@ -342,15 +366,15 @@ class QuickPickPeekOverlayService : Service() {
                             view.animate().alpha(bubbleAlpha).scaleX(1f).scaleY(1f).setDuration(UNDOCK_ANIM_MS).start()
                         }
                         if (trashView == null) {
-                            val newTrash = roundIconView(overlayContext, trashSizePx, R.drawable.ic_close_bubble, 0xE6D32F2F.toInt()).apply {
+                            val newTrash = roundIconView(overlayContext, trashWindowPx, R.drawable.ic_close_bubble, 0xE6D32F2F.toInt()).apply {
                                 contentDescription = context.getString(R.string.quick_pick_remove_desc)
                             }
                             newTrash.alpha = 0f
-                            newTrash.scaleX = 0.5f
-                            newTrash.scaleY = 0.5f
+                            newTrash.scaleX = trashRest * 0.5f
+                            newTrash.scaleY = trashRest * 0.5f
                             runCatching { wm.addView(newTrash, trashParams) }.onSuccess {
                                 trashView = newTrash
-                                newTrash.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(TRASH_IN_MS)
+                                newTrash.animate().alpha(1f).scaleX(trashRest).scaleY(trashRest).setDuration(TRASH_IN_MS)
                                     .setInterpolator(OvershootInterpolator())
                             }
                         }
@@ -370,7 +394,7 @@ class QuickPickPeekOverlayService : Service() {
                             if (overTrash) view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                             view.animate().scaleX(if (overTrash) 0.7f else 1f).scaleY(if (overTrash) 0.7f else 1f)
                                 .setDuration(120).start()
-                            trashView?.animate()?.scaleX(if (overTrash) 1.25f else 1f)?.scaleY(if (overTrash) 1.25f else 1f)
+                            trashView?.animate()?.scaleX(if (overTrash) trashRest * TRASH_GROW else trashRest)?.scaleY(if (overTrash) trashRest * TRASH_GROW else trashRest)
                                 ?.setDuration(120)?.start()
                         }
                     }
