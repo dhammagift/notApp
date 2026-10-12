@@ -285,6 +285,13 @@ c_bubble_stays_off() {  # N20: after ✕ with "bring back" off, the switch reads
   tap_s text '^Dark$' && tap_s text '^System$' || return 1
   [ "$(switch_of '^Floating button in List and Mix modes$' | cut -d' ' -f3)" = false ]
 }
+c_bubble_no_stale_start() {  # the button is off (case 11); a start from anything still holding the old "on" must not show it
+  adb root >/dev/null 2>&1; sleep 2
+  adb shell am startservice -n "$PKG/com.noapp.container.shortcuts.QuickPickPeekOverlayService" >/dev/null 2>&1 || { echo "  could not start the service (no root?)"; return 1; }
+  sleep 3
+  adb exec-out screencap -p > "$OUT/bubble-stale-start.png"
+  ! adb shell dumpsys activity services "$PKG" | grep -q QuickPickPeekOverlayService || { echo "  floating button came back"; return 1; }
+}
 c_recents() {  # recent apps row: usage access granted, the switch on, the sheet shows icons before the gear
   fresh
   adb shell appops set "$PKG" GET_USAGE_STATS allow
@@ -460,6 +467,7 @@ case_run 08 list-launch c_list_launch
 case_run 09 sheet-away c_sheet_away
 case_run 10 floating-button c_bubble
 case_run 11 floating-button-stays-off c_bubble_stays_off
+case_run 11b floating-button-no-stale-start c_bubble_no_stale_start
 case_run 12 recent-apps c_recents
 case_run 13 theme c_theme
 case_run 14 icon-style c_icon_style
