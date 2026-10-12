@@ -257,6 +257,15 @@ jobs:
       # assets above carry. A tag uploads too (owner, 2026-09-28: builds go straight to the test
       # track), to closed testing (alpha) like dg-apps' uposatha and dictionary apps; production
       # still needs a promote in the Play Console.
+      # Play's release name is "<versionCode> (<versionName>)", e.g. 607 (0.6.7), like the dg-apps apps (owner, 2026-10-12).
+      - name: Play release name
+        id: rname
+        if: steps.play.outputs.have == 'yes'
+        run: |
+          v=$(sed -n 's/^ *val appVersion = "\(.*\)"$/\1/p' app/build.gradle.kts)
+          c=$(sed -n 's/^ *val appVersionCode = \([0-9]*\)$/\1/p' app/build.gradle.kts)
+          echo "name=$c ($v)" >> "$GITHUB_OUTPUT"
+
       - name: Upload to Google Play
         if: steps.play.outputs.have == 'yes'
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
@@ -265,6 +274,7 @@ jobs:
           packageName: gift.dhamma.noapp
           releaseFiles: NotApp.aab
           mappingFile: NotApp-mapping.txt
+          releaseName: ${{ steps.rname.outputs.name }}
           track: alpha
           status: completed
 

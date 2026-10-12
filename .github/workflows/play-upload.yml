@@ -33,6 +33,9 @@ jobs:
             exit 1
           fi
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern NotApp.aab --pattern NotApp-mapping.txt
+          # Play's release name "<versionCode> (<versionName>)": v0.6.7 -> 607 (0.6.7), the code as app/build.gradle.kts derives it.
+          IFS=. read -r a b c <<< "${TAG#v}"
+          echo "RELEASE_NAME=$((a * 10000 + b * 100 + c)) (${TAG#v})" >> "$GITHUB_ENV"
 
       - name: Upload to Google Play
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
@@ -41,6 +44,7 @@ jobs:
           packageName: gift.dhamma.noapp
           releaseFiles: NotApp.aab
           mappingFile: ${{ hashFiles('NotApp-mapping.txt') != '' && 'NotApp-mapping.txt' || '' }}
+          releaseName: ${{ env.RELEASE_NAME }}
           track: ${{ inputs.track }}
           status: completed
 
