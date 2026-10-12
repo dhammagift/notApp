@@ -285,7 +285,12 @@ c_bubble_stays_off() {  # N20: after ✕ with "bring back" off, the switch reads
   tap_s text '^Dark$' && tap_s text '^System$' || return 1
   [ "$(switch_of '^Floating button in List and Mix modes$' | cut -d' ' -f3)" = false ]
 }
-c_bubble_no_stale_start() {  # the button is off (case 11); a start from anything still holding the old "on" must not show it
+c_bubble_no_stale_start() {  # the button is off (overlay still allowed); a start from anything still holding the old "on" must not show it
+  fresh
+  adb shell appops set "$PKG" SYSTEM_ALERT_WINDOW allow
+  settings || return 1
+  set_switch '^Floating button in List and Mix modes$' off || return 1
+  home
   adb root >/dev/null 2>&1; sleep 2
   adb shell am startservice -n "$PKG/com.noapp.container.shortcuts.QuickPickPeekOverlayService" >/dev/null 2>&1 || { echo "  could not start the service (no root?)"; return 1; }
   sleep 3
@@ -467,7 +472,6 @@ case_run 08 list-launch c_list_launch
 case_run 09 sheet-away c_sheet_away
 case_run 10 floating-button c_bubble
 case_run 11 floating-button-stays-off c_bubble_stays_off
-case_run 11b floating-button-no-stale-start c_bubble_no_stale_start
 case_run 12 recent-apps c_recents
 case_run 13 theme c_theme
 case_run 14 icon-style c_icon_style
@@ -480,6 +484,8 @@ case_run 20 share-word c_share
 case_run 21 text-selection c_process_text
 case_run 22 backup-restore c_backup_restore
 case_run 23 resize-in-editor c_resize_editor
+# Last: it turns on adb root, which the cases before it never ran under.
+case_run 24 floating-button-no-stale-start c_bubble_no_stale_start
 
 echo; cat "$OUT/results.txt"
 [ "$fails" = 0 ] || { echo "::error::$fails feature case(s) failed, see out/tour/results.txt"; exit 1; }
