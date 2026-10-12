@@ -28,11 +28,14 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import com.noapp.container.QuickPickActivity
 import com.noapp.container.R
+import com.noapp.container.DebugLog
 import com.noapp.container.data.ConfigStore
+import com.noapp.container.model.AppMode
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
+private const val TAG = "PeekOverlay"
 private const val PREFS_NAME = "no_app_prefs"
 private const val KEY_PEEK_X = "peek_bubble_x"
 private const val KEY_PEEK_Y = "peek_bubble_y"
@@ -129,6 +132,14 @@ class QuickPickPeekOverlayService : Service() {
         // Read once per show — the bubble is re-created on every collapse anyway, and Settings
         // itself removes any showing one.
         val config = ConfigStore.load(this)
+        // Every caller decides from what it read earlier (the list sheet's allowPeek is read when it
+        // opened), so one that is still around after the button went to the trash or was switched off
+        // brought it back with nobody using the app (owner, 2026-10-12). The stored setting decides.
+        DebugLog.log(this, TAG, "onStartCommand showPeekBubble=${config.showPeekBubble} mode=${config.mode}")
+        if (!config.showPeekBubble || config.mode == AppMode.DIRECT) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         val bubbleScale = config.peekBubbleSize
         val bubbleAlpha = config.peekBubbleAlpha
         val dockAlpha = bubbleAlpha * DOCK_ALPHA_FACTOR
