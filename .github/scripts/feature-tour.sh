@@ -124,7 +124,8 @@ drawer_tap() {  # open Not App from the launcher's app drawer, as a thumb does
   has text 'predicted apps' && tap content-desc '^Close$'
   tap text "^$name\$" || tap content-desc "^$name\$"
 }
-config() { adb shell am start -n "$PKG/$C.MainActivity" --ez extra_open_config true >/dev/null; sleep 4; }
+# Waits for the app to be in front, not a fixed time: on a slow emulator 4 s still showed the launcher (cases 16, 22).
+config() { adb shell am start -n "$PKG/$C.MainActivity" --ez extra_open_config true >/dev/null; sleep 2; wait_for package "^$PKG\$" 10 >/dev/null; sleep 1; return 0; }
 settings() { config && tap content-desc '^Settings$' && wait_for text '^Settings$' 8; }
 # Dismiss what can stand in the way: the review card (always on in a review-test build) and a snackbar.
 later() { has text '^Later$' && tap text '^Later$'; return 0; }
