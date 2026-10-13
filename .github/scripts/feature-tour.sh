@@ -328,8 +328,9 @@ c_direct() {  # DIRECT: the icon opens item 1 (Contacts) right away, the ⚙ ove
   tap_s text '^▶ Direct' || return 1
   has text '^How I get you back' && tap text '^Continue$' && back
   tap content-desc '^Close$' || back
-  drawer_tap; sleep 0.5
-  local gear=0; adb shell dumpsys activity services "$PKG" | grep -q GearOverlayService && gear=1
+  drawer_tap
+  # The ⚙ overlay is up for a few seconds only: poll for it instead of one look after 0.5 s (missed it once, run 38335028921).
+  local gear=0 i; for i in 1 2 3 4 5 6; do adb shell dumpsys activity services "$PKG" | grep -q GearOverlayService && { gear=1; break; }; sleep 0.5; done
   adb exec-out screencap -p > "$OUT/direct-gear.png"
   sleep 2
   top | grep -qi contacts || { echo "  $(top)"; adb shell dumpsys activity activities > "$OUT/direct-activities.txt"; return 1; }
