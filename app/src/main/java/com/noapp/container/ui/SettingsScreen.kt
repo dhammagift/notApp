@@ -87,6 +87,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.noapp.container.DebugLog
+import com.noapp.container.BuildConfig
 import com.noapp.container.R
 import com.noapp.container.data.ConfigStore
 import com.noapp.container.icon.DownsampledImage
@@ -520,18 +521,21 @@ fun SettingsScreen(
                 PeekBubblePreview(size = sizeDraft, alpha = alphaDraft, dockPeek = dockPeekDraft, modifier = Modifier.padding(start = 12.dp))
             }
             HorizontalDivider()
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.settings_rate_app)) },
-                supportingContent = { Text(stringResource(R.string.settings_rate_app_hint)) },
-                leadingContent = { Icon(Icons.Default.Star, contentDescription = null) },
-                modifier = Modifier.clickable {
-                    // Same statement as answering the card: the user is on their way to the store, so
-                    // the automatic invitation has nothing left to ask for. The row itself stays —
-                    // only the unprompted card is settled by it.
-                    ReviewStore.stopAsking(context)
-                    openStorePage(context)
-                }
-            )
+            // Open stores have no ratings: Not App Droid has no "Rate app".
+            if (!BuildConfig.DROID) {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.settings_rate_app)) },
+                    supportingContent = { Text(stringResource(R.string.settings_rate_app_hint)) },
+                    leadingContent = { Icon(Icons.Default.Star, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        // Same statement as answering the card: the user is on their way to the store, so
+                        // the automatic invitation has nothing left to ask for. The row itself stays —
+                        // only the unprompted card is settled by it.
+                        ReviewStore.stopAsking(context)
+                        openStorePage(context)
+                    }
+                )
+            }
             ListItem(
                 headlineContent = { Text(stringResource(R.string.settings_privacy_policy)) },
                 leadingContent = { Icon(Icons.Default.Lock, contentDescription = null) },

@@ -39,6 +39,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import com.noapp.container.BuildConfig
 import com.noapp.container.R
 import com.noapp.container.data.ReviewStore
 import com.noapp.container.icon.enabledLauncherComponent
@@ -138,7 +139,8 @@ fun ReviewCard(onDismissed: () -> Unit, modifier: Modifier = Modifier) {
 @Composable
 fun ReviewCardIfDue(modifier: Modifier = Modifier, containerModifier: Modifier = Modifier) {
     val context = LocalContext.current
-    var due by remember { mutableStateOf(ReviewStore.cardDue(context)) }
+    // Open stores have no ratings, so Not App Droid never asks (and has no "Rate app" row either).
+    var due by remember { mutableStateOf(!BuildConfig.DROID && ReviewStore.cardDue(context)) }
     // Answering folds the card away rather than dropping it, so what's below slides up instead of jumping.
     // [containerModifier] is for what has to sit on the container itself (a Box's align); [modifier]
     // stays inside, so its padding folds away with the card.

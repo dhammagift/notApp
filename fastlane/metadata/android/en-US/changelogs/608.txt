@@ -1,0 +1,2 @@
+* Not App Droid: no "Rate app" and no rating card (open stores have no ratings), nothing points to Google Play
+* The floating button stays off once it is switched off or dropped on the ✕
